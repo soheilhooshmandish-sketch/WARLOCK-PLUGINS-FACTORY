@@ -3,10 +3,15 @@ $ErrorActionPreference = "Stop"
 $TaskName = "Warlock Plugins Factory"
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $Supervisor = Join-Path $PSScriptRoot "warlock-supervisor.ps1"
+$HiddenLauncher = Join-Path $PSScriptRoot "run-warlock-supervisor-hidden.vbs"
 $RuntimeDir = Join-Path $ProjectRoot ".warlock\runtime"
 
 if (-not (Test-Path -LiteralPath $Supervisor -PathType Leaf)) {
     throw "Supervisor not found: $Supervisor"
+}
+
+if (-not (Test-Path -LiteralPath $HiddenLauncher -PathType Leaf)) {
+    throw "Hidden launcher not found: $HiddenLauncher"
 }
 
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
@@ -24,12 +29,9 @@ foreach ($Name in $RequiredVariables) {
     }
 }
 
-$PowerShell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+$WScript = "$env:SystemRoot\System32\wscript.exe"
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-
-# Keep the Task Scheduler command line simple. The supervisor path is the only
-# quoted value and is passed directly to Windows PowerShell with -File.
-$Arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $Supervisor
+$Arguments = '"{0}"' -f $HiddenLauncher
 
 $ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
@@ -37,7 +39,7 @@ if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
     Start-Sleep -Seconds 2
 }
 
-$Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments -WorkingDirectory $ProjectRoot
+$Action = New-ScheduledTaskAction -Execute $WScript -Argument $Arguments -WorkingDirectory $ProjectRoot
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
 
 $SettingsParams = @{
@@ -63,7 +65,7 @@ $RegisterParams = @{
     Trigger = $Trigger
     Settings = $Settings
     Principal = $Principal
-    Description = "Starts and supervises the Warlock Local Agent, Gateway, and Cloudflare Tunnel."
+    Description = "Starts and supervises the Warlock Local Agent, Gateway, and Cloudflare Tunnel without opening a console window."
     Force = $true
 }
 Register-ScheduledTask @RegisterParams | Out-Null
@@ -78,4 +80,5 @@ Write-Host "Warlock startup installed."
 Write-Host "User: $UserId"
 Write-Host "Task state: $($Task.State)"
 Write-Host "Last task result: $($Info.LastTaskResult)"
+Write-Host "Launcher: hidden"
 Write-Host "Logs: .warlock\runtime"
