@@ -14,27 +14,20 @@ Set-Content -LiteralPath $SupervisorPid -Value $PID -NoNewline
 
 function Write-SupervisorLog {
     param([Parameter(Mandatory = $true)][string]$Message)
-
     $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Add-Content -LiteralPath $SupervisorLog -Value "[$Timestamp] $Message"
 }
 
 function Get-UserEnvironmentValue {
     param([Parameter(Mandatory = $true)][string]$Name)
-
     $Value = [Environment]::GetEnvironmentVariable($Name, "User")
-    if ([string]::IsNullOrWhiteSpace($Value)) {
-        throw "Required user environment variable is missing: $Name"
-    }
+    if ([string]::IsNullOrWhiteSpace($Value)) { throw "Required user environment variable is missing: $Name" }
     return $Value
 }
 
 function Assert-FileExists {
     param([Parameter(Mandatory = $true)][string]$Path)
-
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw "Required file not found: $Path"
-    }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "Required file not found: $Path" }
 }
 
 function Get-ServicePidPath {
@@ -43,7 +36,7 @@ function Get-ServicePidPath {
 }
 
 try {
-    Write-SupervisorLog "Supervisor starting (PID $PID)."
+    Write-SupervisorLog "Supervisor starting."
 
     Assert-FileExists $Python
     Assert-FileExists $Cloudflared
@@ -56,29 +49,14 @@ try {
     Write-SupervisorLog "Required files and user environment values validated."
 
     $Services = @(
-        @{
-            Name = "agent"
-            FilePath = $Python
-            Arguments = @("-m", "apps.local_agent.run_agent")
-        },
-        @{
-            Name = "gateway"
-            FilePath = $Python
-            Arguments = @("-m", "uvicorn", "apps.gateway.server:app", "--host", "127.0.0.1", "--port", "8780")
-        },
-        @{
-            Name = "mcp"
-            FilePath = $Python
-            Arguments = @("-m", "apps.mcp_server.run_mcp")
-        },
-        @{
-            Name = "tunnel"
-            FilePath = $Cloudflared
-            Arguments = @("tunnel", "--config", $CloudflareConfig, "run", "warlock-agent")
-        }
+        @{ Name = "agent"; FilePath = $Python; Arguments = @("-m", "apps.local_agent.run_agent") },
+        @{ Name = "gateway"; FilePath = $Python; Arguments = @("-m", "uvicorn", "apps.gateway.server:app", "--host", "127.0.0.1", "--port", "8780") },
+        @{ Name = "mcp"; FilePath = $Python; Arguments = @("-m", "apps.mcp_server.run_mcp") },
+        @{ Name = "tunnel"; FilePath = $Cloudflared; Arguments = @("tunnel", "--config", $CloudflareConfig, "run", "warlock-agent") }
     )
 
     $Processes = @{}
+    $LastStart = @{}
 
     function Start-WarlockService {
         param([Parameter(Mandatory = $true)][hashtable]$Service)
@@ -90,7 +68,6 @@ try {
 
         try {
             Write-SupervisorLog "Starting service: $Name"
-
             $StartParams = @{
                 FilePath = $Service.FilePath
                 ArgumentList = $Service.Arguments
@@ -100,9 +77,9 @@ try {
                 RedirectStandardError = $Stderr
                 PassThru = $true
             }
-
             $Process = Start-Process @StartParams
             $Processes[$Name] = $Process
+            $LastStart[$Name] = Get-Date
             Set-Content -LiteralPath $PidPath -Value $Process.Id -NoNewline
             Write-SupervisorLog "Started service: $Name (PID $($Process.Id))"
         }
@@ -129,7 +106,8 @@ try {
                 Remove-Item -LiteralPath (Get-ServicePidPath $Name) -Force -ErrorAction SilentlyContinue
 
                 if ($null -ne $Process -and $Process.HasExited) {
-                    Write-SupervisorLog "Service exited: $Name (exit code $($Process.ExitCode))"
+                    $ExitCode = $Process.ExitCode
+                    Write-SupervisorLog "Service exited: $Name (exit code $ExitCode). Error log: $Name.err.log"
                 }
 
                 Start-Sleep -Seconds 2
@@ -139,7 +117,7 @@ try {
     }
 }
 catch {
-    Write-SupervisorLog "Supervisor fatal error: $($_.Exception.Message)"
+    try { Write-SupervisorLog "Supervisor fatal error: $($_.Exception.Message)" } catch {}
     throw
 }
 finally {
@@ -152,7 +130,6 @@ finally {
             Remove-Item -LiteralPath (Get-ServicePidPath $Name) -Force -ErrorAction SilentlyContinue
         }
     }
-
     Remove-Item -LiteralPath $SupervisorPid -Force -ErrorAction SilentlyContinue
-    Write-SupervisorLog "Supervisor stopped."
+    try { Write-SupervisorLog "Supervisor stopped." } catch {}
 }
