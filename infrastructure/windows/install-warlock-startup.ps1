@@ -22,18 +22,23 @@ foreach ($Name in $RequiredVariables) {
     if ([string]::IsNullOrWhiteSpace($Value)) { throw "Required user environment variable is missing: $Name" }
 }
 
-function Test-LocalPort {
-    param([Parameter(Mandatory = $true)][int]$Port)
+function Test-WarlockHealth {
+    param(
+        [Parameter(Mandatory = $true)][int]$Port,
+        [Parameter(Mandatory = $true)][string]$IdentityProperty,
+        [Parameter(Mandatory = $true)][string]$IdentityValue
+    )
+
     try {
-        $Client = New-Object System.Net.Sockets.TcpClient
-        $Async = $Client.BeginConnect("127.0.0.1", $Port, $null, $null)
-        if (-not $Async.AsyncWaitHandle.WaitOne(400)) {
-            $Client.Close()
-            return $false
-        }
-        $Client.EndConnect($Async)
-        $Client.Close()
-        return $true
+        $Response = Invoke-RestMethod `
+            -Uri "http://127.0.0.1:$Port/health" `
+            -Method Get `
+            -TimeoutSec 1 `
+            -ErrorAction Stop
+
+        if ([string]$Response.status -ne "healthy") { return $false }
+        $ActualIdentity = [string]($Response.PSObject.Properties[$IdentityProperty].Value)
+        return $ActualIdentity -eq $IdentityValue
     }
     catch {
         return $false
@@ -86,7 +91,8 @@ function Stop-WarlockProjectProcesses {
             $Command.Contains("apps.local_agent.run_agent") -or
             $Command.Contains("apps.gateway.server:app") -or
             $Command.Contains("apps.mcp_server.run_mcp") -or
-            $Command.Contains("apps.runtime_supervisor")
+            $Command.Contains("apps.runtime_supervisor") -or
+            $Command.Contains("apps.runtime_child")
         )
 
         $IsPythonExecutable = ($ExecutableName -eq "python.exe" -or $ExecutableName -eq "pythonw.exe")
@@ -200,11 +206,11 @@ Start-ScheduledTask -TaskName $TaskName
 $SupervisorPidFile = Join-Path $RuntimeDir "supervisor.pid"
 $Deadline = (Get-Date).AddSeconds(30)
 do {
-    $AgentListening = Test-LocalPort 8765
-    $GatewayListening = Test-LocalPort 8780
-    $McpListening = Test-LocalPort 8790
+    $AgentHealthy = Test-WarlockHealth -Port 8765 -IdentityProperty "agent" -IdentityValue "Warlock Local Agent"
+    $GatewayHealthy = Test-WarlockHealth -Port 8780 -IdentityProperty "gateway" -IdentityValue "warlock"
+    $McpHealthy = Test-WarlockHealth -Port 8790 -IdentityProperty "service" -IdentityValue "warlock-mcp"
     $SupervisorReady = Test-Path -LiteralPath $SupervisorPidFile -PathType Leaf
-    if ($SupervisorReady -and $AgentListening -and $GatewayListening -and $McpListening) { break }
+    if ($SupervisorReady -and $AgentHealthy -and $GatewayHealthy -and $McpHealthy) { break }
     Start-Sleep -Seconds 1
 } while ((Get-Date) -lt $Deadline)
 
@@ -220,13 +226,13 @@ Write-Host "Last task result: $($Info.LastTaskResult)"
 Write-Host "Launcher: Task Scheduler -> physical Python runtime"
 Write-Host "Runtime Python: $RuntimePython"
 Write-Host "Supervisor PID: $SupervisorPid"
-Write-Host "Agent 8765 listening: $AgentListening"
-Write-Host "Gateway 8780 listening: $GatewayListening"
-Write-Host "MCP 8790 listening: $McpListening"
+Write-Host "Agent 8765 healthy: $AgentHealthy"
+Write-Host "Gateway 8780 healthy: $GatewayHealthy"
+Write-Host "MCP 8790 healthy: $McpHealthy"
 Write-Host "MCP: http://127.0.0.1:8790/mcp"
 Write-Host "Logs: .warlock\runtime"
 
-if (-not ($SupervisorReady -and $AgentListening -and $GatewayListening -and $McpListening)) {
+if (-not ($SupervisorReady -and $AgentHealthy -and $GatewayHealthy -and $McpHealthy)) {
     Show-RecentRuntimeLogs
     throw "Warlock runtime did not become healthy within 30 seconds. See the logs printed above."
 }
