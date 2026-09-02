@@ -15,6 +15,11 @@ mcp = FastMCP(
         "agent Permission Gate and audit log. Never use these tools as "
         "a substitute for unrestricted shell access."
     ),
+    host="127.0.0.1",
+    port=8790,
+    streamable_http_path="/mcp",
+    stateless_http=True,
+    json_response=True,
 )
 
 
@@ -78,11 +83,7 @@ def make_directory(path: str) -> dict[str, Any]:
 @mcp.tool()
 def move_path(source: str, destination: str) -> dict[str, Any]:
     """Move or rename an allowed project-relative path."""
-    return _request(
-        "POST",
-        "/files/move",
-        {"source": source, "destination": destination},
-    )
+    return _request("POST", "/files/move", {"source": source, "destination": destination})
 
 
 @mcp.tool()
