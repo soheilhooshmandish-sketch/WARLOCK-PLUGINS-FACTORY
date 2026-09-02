@@ -3,4 +3,4 @@ uvicorn
 httpx
 PyJWT
 cryptography
-mcp
+mcp==1.29.1
