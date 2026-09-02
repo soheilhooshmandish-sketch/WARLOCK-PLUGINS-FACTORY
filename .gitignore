@@ -33,3 +33,4 @@ htmlcov/
 # Temporary files
 tmp/
 temp/agent.log
+.warlock/

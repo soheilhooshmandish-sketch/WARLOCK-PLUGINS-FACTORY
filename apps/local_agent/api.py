@@ -3,8 +3,10 @@ import os
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
-from .config import AGENT_NAME, AGENT_VERSION, PROJECT_ROOT
+from .audit import write_audit
 from .command_gateway import run_allowed
+from .config import AGENT_NAME, AGENT_VERSION, PROJECT_ROOT
+from .workspace_worker import list_files, read_file, write_file
 
 
 app = FastAPI(
@@ -15,6 +17,15 @@ app = FastAPI(
 
 class CommandRequest(BaseModel):
     command: str
+
+
+class PathRequest(BaseModel):
+    path: str = "."
+
+
+class WriteFileRequest(BaseModel):
+    path: str
+    content: str
 
 
 def require_token(authorization: str | None) -> None:
@@ -59,20 +70,130 @@ def command(
 ):
     require_token(authorization)
 
+    write_audit(
+        "command_request",
+        "received",
+        {"command": request.command},
+    )
+
     try:
         output = run_allowed(request.command)
     except PermissionError:
+        write_audit(
+            "command_request",
+            "denied",
+            {"command": request.command},
+        )
         raise HTTPException(
             status_code=403,
             detail="Command not allowed",
         )
     except Exception:
+        write_audit(
+            "command_request",
+            "failed",
+            {"command": request.command},
+        )
         raise HTTPException(
             status_code=500,
             detail="Command execution failed",
         )
 
+    write_audit(
+        "command_request",
+        "success",
+        {"command": request.command},
+    )
+
     return {
         "command": request.command,
         "output": output,
     }
+
+
+@app.post("/files/list")
+def files_list(
+    request: PathRequest,
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    try:
+        files = list_files(request.path)
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Path not allowed")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Path not found")
+    except NotADirectoryError:
+        raise HTTPException(status_code=400, detail="Path is not a directory")
+
+    return {
+        "path": request.path,
+        "files": files,
+    }
+
+
+@app.post("/files/read")
+def files_read(
+    request: PathRequest,
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit(
+        "file_read",
+        "received",
+        {"path": request.path},
+    )
+
+    try:
+        content = read_file(request.path)
+    except PermissionError:
+        write_audit("file_read", "denied", {"path": request.path})
+        raise HTTPException(status_code=403, detail="Path not allowed")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")
+    except IsADirectoryError:
+        raise HTTPException(status_code=400, detail="Path is a directory")
+
+    write_audit(
+        "file_read",
+        "success",
+        {"path": request.path},
+    )
+
+    return {
+        "path": request.path,
+        "content": content,
+    }
+
+
+@app.post("/files/write")
+def files_write(
+    request: WriteFileRequest,
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit(
+        "file_write",
+        "received",
+        {"path": request.path},
+    )
+
+    try:
+        result = write_file(
+            request.path,
+            request.content,
+        )
+    except PermissionError:
+        write_audit("file_write", "denied", {"path": request.path})
+        raise HTTPException(status_code=403, detail="Path not allowed")
+
+    write_audit(
+        "file_write",
+        "success",
+        {"path": request.path},
+    )
+
+    return result
