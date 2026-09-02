@@ -4,7 +4,6 @@ import os
 import signal
 import socket
 import subprocess
-import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -241,7 +240,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except BaseException as exc:
+    except Exception as exc:
         try:
             log(f"Supervisor fatal error: {exc}")
         finally:
