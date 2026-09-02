@@ -6,6 +6,13 @@ from pydantic import BaseModel
 from .audit import write_audit
 from .command_gateway import run_allowed
 from .config import AGENT_NAME, AGENT_VERSION, PROJECT_ROOT
+from .git_worker import (
+    git_add_all,
+    git_branch,
+    git_commit,
+    git_diff,
+    git_status,
+)
 from .workspace_worker import (
     delete_path,
     list_files,
@@ -38,6 +45,10 @@ class WriteFileRequest(BaseModel):
 class MovePathRequest(BaseModel):
     source: str
     destination: str
+
+
+class GitCommitRequest(BaseModel):
+    message: str
 
 
 def require_token(authorization: str | None) -> None:
@@ -280,3 +291,116 @@ def files_delete(
 
     write_audit("delete", "success", {"path": request.path})
     return result
+
+
+@app.get("/git/status")
+def api_git_status(
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit("git_status", "received")
+
+    try:
+        output = git_status()
+    except Exception:
+        write_audit("git_status", "failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Git status failed",
+        )
+
+    write_audit("git_status", "success")
+    return {"output": output}
+
+
+@app.get("/git/branch")
+def api_git_branch(
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit("git_branch", "received")
+
+    try:
+        output = git_branch()
+    except Exception:
+        write_audit("git_branch", "failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Git branch failed",
+        )
+
+    write_audit("git_branch", "success")
+    return {"output": output}
+
+
+@app.get("/git/diff")
+def api_git_diff(
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit("git_diff", "received")
+
+    try:
+        output = git_diff()
+    except Exception:
+        write_audit("git_diff", "failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Git diff failed",
+        )
+
+    write_audit("git_diff", "success")
+    return {"output": output}
+
+
+@app.post("/git/add")
+def api_git_add(
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit("git_add_all", "received")
+
+    try:
+        output = git_add_all()
+    except Exception:
+        write_audit("git_add_all", "failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Git add failed",
+        )
+
+    write_audit("git_add_all", "success")
+    return {"output": output}
+
+
+@app.post("/git/commit")
+def api_git_commit(
+    request: GitCommitRequest,
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    details = {"message": request.message}
+    write_audit("git_commit", "received", details)
+
+    try:
+        output = git_commit(request.message)
+    except ValueError as exc:
+        write_audit("git_commit", "denied", details)
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+    except Exception:
+        write_audit("git_commit", "failed", details)
+        raise HTTPException(
+            status_code=500,
+            detail="Git commit failed",
+        )
+
+    write_audit("git_commit", "success", details)
+    return {"output": output}
