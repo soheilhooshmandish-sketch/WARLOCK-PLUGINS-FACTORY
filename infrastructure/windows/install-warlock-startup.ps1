@@ -40,6 +40,32 @@ function Test-LocalPort {
     }
 }
 
+function Resolve-PhysicalPython {
+    $Probe = @'
+import ctypes
+import pathlib
+import sys
+
+if sys.platform != "win32":
+    print(pathlib.Path(sys.executable).resolve())
+else:
+    buffer = ctypes.create_unicode_buffer(32768)
+    length = ctypes.windll.kernel32.GetModuleFileNameW(None, buffer, len(buffer))
+    if not length:
+        raise SystemExit("GetModuleFileNameW failed")
+    print(buffer.value)
+'@
+
+    $Resolved = (& $Python -c $Probe 2>&1 | Select-Object -Last 1).ToString().Trim()
+    if ([string]::IsNullOrWhiteSpace($Resolved)) {
+        throw "Could not resolve the physical Python runtime behind the virtual environment launcher."
+    }
+    if (-not (Test-Path -LiteralPath $Resolved -PathType Leaf)) {
+        throw "Resolved physical Python runtime does not exist: $Resolved"
+    }
+    return (Resolve-Path -LiteralPath $Resolved).Path
+}
+
 function Stop-WarlockProjectProcesses {
     $VenvScripts = (Join-Path $ProjectRoot ".venv\Scripts").ToLowerInvariant()
     $PythonLower = $Python.ToLowerInvariant()
@@ -63,9 +89,6 @@ function Stop-WarlockProjectProcesses {
             $Command.Contains("apps.runtime_supervisor")
         )
 
-        # Python 3.14 venv launchers can hand off to the physical python.exe in
-        # AppData\Local\Python\pythoncore-*. Accept a real Python executable
-        # only when its command line is one of Warlock's known module commands.
         $IsPythonExecutable = ($ExecutableName -eq "python.exe" -or $ExecutableName -eq "pythonw.exe")
         $UsesProjectPython = (
             $Executable.StartsWith($VenvScripts) -or
@@ -134,17 +157,23 @@ Write-Host "Updating Warlock runtime dependencies..."
 & $Python -m pip install --disable-pip-version-check -r $Requirements
 if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed with exit code $LASTEXITCODE" }
 
+Write-Host "Resolving physical Python runtime..."
+$RuntimePython = Resolve-PhysicalPython
+Write-Host "Physical Python runtime: $RuntimePython"
+
 Remove-ExistingWarlockTask
 Stop-WarlockProjectProcesses
 Get-ChildItem -LiteralPath $RuntimeDir -Filter "*.pid" -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
-# Use python.exe directly. Task Scheduler launches it without an interactive
-# console window, and unlike the pythonw venv launcher its process lifecycle is
-# reliably visible to Task Scheduler on Python 3.14.
+# Python 3.14 virtual environments may use a launcher executable in
+# .venv\Scripts which hands off to the real pythoncore runtime. That handoff
+# has proven unreliable when started by Task Scheduler on this machine.
+# Launch the physical interpreter directly; runtime_supervisor reconstructs
+# the project's virtual-environment paths for Agent, Gateway, and MCP.
 $Action = New-ScheduledTaskAction `
-    -Execute $Python `
+    -Execute $RuntimePython `
     -Argument "-m apps.runtime_supervisor" `
     -WorkingDirectory $ProjectRoot
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
@@ -188,7 +217,8 @@ Write-Host "Warlock startup installed."
 Write-Host "User: $UserId"
 Write-Host "Task state: $($Task.State)"
 Write-Host "Last task result: $($Info.LastTaskResult)"
-Write-Host "Launcher: Task Scheduler -> python.exe self-healing supervisor"
+Write-Host "Launcher: Task Scheduler -> physical Python runtime"
+Write-Host "Runtime Python: $RuntimePython"
 Write-Host "Supervisor PID: $SupervisorPid"
 Write-Host "Agent 8765 listening: $AgentListening"
 Write-Host "Gateway 8780 listening: $GatewayListening"
