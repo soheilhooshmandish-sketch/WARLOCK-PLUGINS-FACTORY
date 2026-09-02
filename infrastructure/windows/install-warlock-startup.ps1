@@ -54,6 +54,7 @@ function Stop-WarlockProjectProcesses {
 
         $Executable = if ($null -ne $Process.ExecutablePath) { $Process.ExecutablePath.ToLowerInvariant() } else { "" }
         $Command = if ($null -ne $Process.CommandLine) { $Process.CommandLine.ToLowerInvariant() } else { "" }
+        $ExecutableName = if ($Executable) { [System.IO.Path]::GetFileName($Executable) } else { "" }
 
         $IsWarlockPythonCommand = (
             $Command.Contains("apps.local_agent.run_agent") -or
@@ -62,13 +63,15 @@ function Stop-WarlockProjectProcesses {
             $Command.Contains("apps.runtime_supervisor")
         )
 
-        # Python 3.14 venv launchers may spawn the real interpreter from
-        # AppData\Local\Python\pythoncore-*. Match the project venv path in
-        # the command line too so those child processes cannot escape cleanup.
+        # Python 3.14 venv launchers can hand off to the physical python.exe in
+        # AppData\Local\Python\pythoncore-*. Accept a real Python executable
+        # only when its command line is one of Warlock's known module commands.
+        $IsPythonExecutable = ($ExecutableName -eq "python.exe" -or $ExecutableName -eq "pythonw.exe")
         $UsesProjectPython = (
             $Executable.StartsWith($VenvScripts) -or
             $Command.Contains($PythonLower) -or
-            $Command.Contains($PythonwLower)
+            $Command.Contains($PythonwLower) -or
+            $IsPythonExecutable
         )
 
         $ProjectPython = $IsWarlockPythonCommand -and $UsesProjectPython
@@ -83,6 +86,27 @@ function Stop-WarlockProjectProcesses {
     }
 
     Start-Sleep -Seconds 2
+}
+
+function Remove-ExistingWarlockTask {
+    $ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($null -eq $ExistingTask) { return }
+
+    if ($ExistingTask.State -eq "Running") {
+        Write-Host "Stopping existing Warlock scheduled task..."
+        Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+
+        $StopDeadline = (Get-Date).AddSeconds(10)
+        do {
+            Start-Sleep -Milliseconds 250
+            $CurrentTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+            if ($null -eq $CurrentTask -or $CurrentTask.State -ne "Running") { break }
+        } while ((Get-Date) -lt $StopDeadline)
+    }
+
+    Write-Host "Removing existing Warlock scheduled task..."
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
 }
 
 function Show-RecentRuntimeLogs {
@@ -110,12 +134,7 @@ Write-Host "Updating Warlock runtime dependencies..."
 & $Python -m pip install --disable-pip-version-check -r $Requirements
 if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed with exit code $LASTEXITCODE" }
 
-$ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
-    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 2
-}
-
+Remove-ExistingWarlockTask
 Stop-WarlockProjectProcesses
 Get-ChildItem -LiteralPath $RuntimeDir -Filter "*.pid" -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
