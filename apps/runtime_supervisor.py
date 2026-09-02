@@ -23,6 +23,7 @@ RUNTIME_DIR = PROJECT_ROOT / ".warlock" / "runtime"
 VENV_DIR = PROJECT_ROOT / ".venv"
 VENV_PYTHON = VENV_DIR / "Scripts" / "python.exe"
 VENV_SITE_PACKAGES = VENV_DIR / "Lib" / "site-packages"
+RUNTIME_CHILD = PROJECT_ROOT / "apps" / "runtime_child.py"
 CLOUDFLARED = PROJECT_ROOT / "infrastructure" / "cloudflare" / "cloudflared.exe"
 CLOUDFLARE_CONFIG = PROJECT_ROOT / "infrastructure" / "cloudflare" / "config" / "config.yml"
 SUPERVISOR_LOG = RUNTIME_DIR / "supervisor.log"
@@ -53,12 +54,22 @@ class Service:
 
 
 SERVICES = (
-    Service("agent", (str(RUNTIME_PYTHON), "-m", "apps.local_agent.run_agent"), 8765),
+    Service(
+        "agent",
+        (
+            str(RUNTIME_PYTHON),
+            "-m",
+            "apps.runtime_child",
+            "apps.local_agent.run_agent",
+        ),
+        8765,
+    ),
     Service(
         "gateway",
         (
             str(RUNTIME_PYTHON),
             "-m",
+            "apps.runtime_child",
             "uvicorn",
             "apps.gateway.server:app",
             "--host",
@@ -68,7 +79,16 @@ SERVICES = (
         ),
         8780,
     ),
-    Service("mcp", (str(RUNTIME_PYTHON), "-m", "apps.mcp_server.run_mcp"), 8790),
+    Service(
+        "mcp",
+        (
+            str(RUNTIME_PYTHON),
+            "-m",
+            "apps.runtime_child",
+            "apps.mcp_server.run_mcp",
+        ),
+        8790,
+    ),
     Service(
         "tunnel",
         (
@@ -146,7 +166,7 @@ def child_environment() -> dict[str, str]:
     env["VIRTUAL_ENV"] = str(VENV_DIR)
     env["PATH"] = str(VENV_DIR / "Scripts") + os.pathsep + env.get("PATH", "")
 
-    python_paths = [str(PROJECT_ROOT), str(VENV_SITE_PACKAGES)]
+    python_paths = [str(PROJECT_ROOT)]
     existing = env.get("PYTHONPATH", "").strip()
     if existing:
         python_paths.append(existing)
@@ -204,7 +224,7 @@ def main() -> int:
     bootstrap_log(f"wrote supervisor pid file: {SUPERVISOR_PID}")
     os.chdir(PROJECT_ROOT)
 
-    for required in (VENV_PYTHON, VENV_SITE_PACKAGES, RUNTIME_PYTHON, CLOUDFLARED, CLOUDFLARE_CONFIG):
+    for required in (VENV_PYTHON, VENV_SITE_PACKAGES, RUNTIME_CHILD, RUNTIME_PYTHON, CLOUDFLARED, CLOUDFLARE_CONFIG):
         if not required.exists():
             raise RuntimeError(f"Required runtime path not found: {required}")
 
@@ -215,6 +235,7 @@ def main() -> int:
     log(f"Supervisor starting. PID {os.getpid()}")
     log(f"Supervisor sys.executable: {sys.executable}")
     log(f"Child runtime interpreter: {RUNTIME_PYTHON}")
+    log(f"Child bootstrap: {RUNTIME_CHILD}")
     log("Required files and user environment values validated.")
 
     processes: dict[str, subprocess.Popen[bytes] | None] = {}
