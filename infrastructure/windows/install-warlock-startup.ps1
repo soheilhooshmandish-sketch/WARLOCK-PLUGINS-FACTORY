@@ -6,12 +6,16 @@ $RuntimeDir = Join-Path $ProjectRoot ".warlock\runtime"
 $Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $Pythonw = Join-Path $ProjectRoot ".venv\Scripts\pythonw.exe"
 $Requirements = Join-Path $ProjectRoot "requirements.txt"
+$RuntimeChild = Join-Path $ProjectRoot "apps\runtime_child.py"
+$RuntimePreflight = Join-Path $ProjectRoot "apps\runtime_preflight.py"
 $Cloudflared = Join-Path $ProjectRoot "infrastructure\cloudflare\cloudflared.exe"
 $LegacySupervisor = Join-Path $PSScriptRoot "warlock-supervisor.ps1"
 $LegacyVbs = Join-Path $PSScriptRoot "run-warlock-supervisor-hidden.vbs"
 
 if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) { throw "Virtual environment Python not found: $Python" }
 if (-not (Test-Path -LiteralPath $Requirements -PathType Leaf)) { throw "Requirements file not found: $Requirements" }
+if (-not (Test-Path -LiteralPath $RuntimeChild -PathType Leaf)) { throw "Runtime child bootstrap not found: $RuntimeChild" }
+if (-not (Test-Path -LiteralPath $RuntimePreflight -PathType Leaf)) { throw "Runtime preflight module not found: $RuntimePreflight" }
 if (-not (Test-Path -LiteralPath $Cloudflared -PathType Leaf)) { throw "cloudflared not found: $Cloudflared" }
 
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
@@ -37,8 +41,9 @@ function Test-WarlockHealth {
             -ErrorAction Stop
 
         if ([string]$Response.status -ne "healthy") { return $false }
-        $ActualIdentity = [string]($Response.PSObject.Properties[$IdentityProperty].Value)
-        return $ActualIdentity -eq $IdentityValue
+        $Identity = $Response.PSObject.Properties[$IdentityProperty]
+        if ($null -eq $Identity) { return $false }
+        return [string]$Identity.Value -eq $IdentityValue
     }
     catch {
         return $false
@@ -69,6 +74,35 @@ else:
         throw "Resolved physical Python runtime does not exist: $Resolved"
     }
     return (Resolve-Path -LiteralPath $Resolved).Path
+}
+
+function Invoke-RuntimePreflight {
+    param([Parameter(Mandatory = $true)][string]$RuntimePython)
+
+    Write-Host "Running Warlock runtime preflight..."
+    $PreviousPythonPath = $env:PYTHONPATH
+    try {
+        if ([string]::IsNullOrWhiteSpace($PreviousPythonPath)) {
+            $env:PYTHONPATH = $ProjectRoot
+        }
+        else {
+            $env:PYTHONPATH = "$ProjectRoot;$PreviousPythonPath"
+        }
+
+        Push-Location $ProjectRoot
+        try {
+            & $RuntimePython -m apps.runtime_child apps.runtime_preflight
+            if ($LASTEXITCODE -ne 0) {
+                throw "Warlock runtime preflight failed with exit code $LASTEXITCODE"
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+    finally {
+        $env:PYTHONPATH = $PreviousPythonPath
+    }
 }
 
 function Stop-WarlockProjectProcesses {
@@ -167,17 +201,16 @@ Write-Host "Resolving physical Python runtime..."
 $RuntimePython = Resolve-PhysicalPython
 Write-Host "Physical Python runtime: $RuntimePython"
 
+# Validate the exact physical-interpreter + runtime-child path before stopping
+# any currently running Warlock task or service.
+Invoke-RuntimePreflight -RuntimePython $RuntimePython
+
 Remove-ExistingWarlockTask
 Stop-WarlockProjectProcesses
 Get-ChildItem -LiteralPath $RuntimeDir -Filter "*.pid" -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
-# Python 3.14 virtual environments may use a launcher executable in
-# .venv\Scripts which hands off to the real pythoncore runtime. That handoff
-# has proven unreliable when started by Task Scheduler on this machine.
-# Launch the physical interpreter directly; runtime_supervisor reconstructs
-# the project's virtual-environment paths for Agent, Gateway, and MCP.
 $Action = New-ScheduledTaskAction `
     -Execute $RuntimePython `
     -Argument "-m apps.runtime_supervisor" `
