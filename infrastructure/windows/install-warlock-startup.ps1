@@ -25,26 +25,34 @@ $Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hi
 
 $Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-$Settings = New-ScheduledTaskSettingsSet \
-    -AllowStartIfOnBatteries \
-    -DontStopIfGoingOnBatteries \
-    -StartWhenAvailable \
-    -ExecutionTimeLimit ([TimeSpan]::Zero) \
-    -RestartCount 3 \
-    -RestartInterval (New-TimeSpan -Minutes 1)
-$Principal = New-ScheduledTaskPrincipal \
-    -UserId $env:USERNAME \
-    -LogonType Interactive \
-    -RunLevel Limited
 
-Register-ScheduledTask \
-    -TaskName $TaskName \
-    -Action $Action \
-    -Trigger $Trigger \
-    -Settings $Settings \
-    -Principal $Principal \
-    -Description "Starts and supervises the Warlock Local Agent, Gateway, and Cloudflare Tunnel." \
-    -Force | Out-Null
+$SettingsParams = @{
+    AllowStartIfOnBatteries = $true
+    DontStopIfGoingOnBatteries = $true
+    StartWhenAvailable = $true
+    ExecutionTimeLimit = [TimeSpan]::Zero
+    RestartCount = 3
+    RestartInterval = (New-TimeSpan -Minutes 1)
+}
+$Settings = New-ScheduledTaskSettingsSet @SettingsParams
+
+$PrincipalParams = @{
+    UserId = $env:USERNAME
+    LogonType = "Interactive"
+    RunLevel = "Limited"
+}
+$Principal = New-ScheduledTaskPrincipal @PrincipalParams
+
+$RegisterParams = @{
+    TaskName = $TaskName
+    Action = $Action
+    Trigger = $Trigger
+    Settings = $Settings
+    Principal = $Principal
+    Description = "Starts and supervises the Warlock Local Agent, Gateway, and Cloudflare Tunnel."
+    Force = $true
+}
+Register-ScheduledTask @RegisterParams | Out-Null
 
 Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 5
