@@ -34,3 +34,4 @@ htmlcov/
 tmp/
 temp/agent.log
 .warlock/
+infrastructure/cloudflare/cloudflared.exe
