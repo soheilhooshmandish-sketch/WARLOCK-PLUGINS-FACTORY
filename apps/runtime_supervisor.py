@@ -44,14 +44,35 @@ if os.name == "nt":
     SYNCHRONIZE = 0x00100000
     WAIT_TIMEOUT = 0x00000102
 
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
+    kernel32.QueryFullProcessImageNameW.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    kernel32.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
+    kernel32.TerminateProcess.restype = wintypes.BOOL
+    kernel32.GetModuleFileNameW.argtypes = [wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+    kernel32.GetModuleFileNameW.restype = wintypes.DWORD
+else:
+    kernel32 = None
+
 
 def physical_python_executable() -> Path:
     """Return the actual running Windows Python image, bypassing the venv launcher."""
-    if os.name != "nt":
+    if os.name != "nt" or kernel32 is None:
         return Path(sys.executable).resolve()
 
     buffer = ctypes.create_unicode_buffer(32768)
-    length = ctypes.windll.kernel32.GetModuleFileNameW(None, buffer, len(buffer))
+    length = kernel32.GetModuleFileNameW(None, buffer, len(buffer))
     if not length:
         return Path(sys.executable).resolve()
     return Path(buffer.value)
@@ -244,66 +265,66 @@ def process_is_alive(pid: int) -> bool:
     if pid <= 0:
         return False
 
-    if os.name != "nt":
+    if os.name != "nt" or kernel32 is None:
         try:
             os.kill(pid, 0)
             return True
         except OSError:
             return False
 
-    handle = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+    handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
     if not handle:
         return False
     try:
-        return ctypes.windll.kernel32.WaitForSingleObject(handle, 0) == WAIT_TIMEOUT
+        return kernel32.WaitForSingleObject(handle, 0) == WAIT_TIMEOUT
     finally:
-        ctypes.windll.kernel32.CloseHandle(handle)
+        kernel32.CloseHandle(handle)
 
 
 def process_image_path(pid: int) -> Path | None:
     if pid <= 0:
         return None
 
-    if os.name != "nt":
+    if os.name != "nt" or kernel32 is None:
         try:
             return Path(f"/proc/{pid}/exe").resolve()
         except OSError:
             return None
 
     access = PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE
-    handle = ctypes.windll.kernel32.OpenProcess(access, False, pid)
+    handle = kernel32.OpenProcess(access, False, pid)
     if not handle:
         return None
     try:
         size = wintypes.DWORD(32768)
         buffer = ctypes.create_unicode_buffer(size.value)
-        success = ctypes.windll.kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size))
+        success = kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size))
         if not success:
             return None
         return Path(buffer.value)
     finally:
-        ctypes.windll.kernel32.CloseHandle(handle)
+        kernel32.CloseHandle(handle)
 
 
 def terminate_pid(pid: int) -> None:
     if pid <= 0 or not process_is_alive(pid):
         return
 
-    if os.name != "nt":
+    if os.name != "nt" or kernel32 is None:
         try:
             os.kill(pid, signal.SIGTERM)
         except OSError:
             pass
         return
 
-    handle = ctypes.windll.kernel32.OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, False, pid)
+    handle = kernel32.OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, False, pid)
     if not handle:
         return
     try:
-        ctypes.windll.kernel32.TerminateProcess(handle, 1)
-        ctypes.windll.kernel32.WaitForSingleObject(handle, 4000)
+        kernel32.TerminateProcess(handle, 1)
+        kernel32.WaitForSingleObject(handle, 4000)
     finally:
-        ctypes.windll.kernel32.CloseHandle(handle)
+        kernel32.CloseHandle(handle)
 
 
 def path_matches(left: Path | None, right: Path | None) -> bool:
