@@ -66,6 +66,7 @@ SERVICES = (
         "agent",
         (
             str(RUNTIME_PYTHON),
+            "-S",
             "-m",
             "apps.runtime_child",
             "apps.local_agent.run_agent",
@@ -79,6 +80,7 @@ SERVICES = (
         "gateway",
         (
             str(RUNTIME_PYTHON),
+            "-S",
             "-m",
             "apps.runtime_child",
             "uvicorn",
@@ -97,6 +99,7 @@ SERVICES = (
         "mcp",
         (
             str(RUNTIME_PYTHON),
+            "-S",
             "-m",
             "apps.runtime_child",
             "apps.mcp_server.run_mcp",
@@ -206,6 +209,8 @@ def child_environment() -> dict[str, str]:
     env = os.environ.copy()
     env["VIRTUAL_ENV"] = str(VENV_DIR)
     env["PATH"] = str(VENV_DIR / "Scripts") + os.pathsep + env.get("PATH", "")
+    env["PYTHONNOUSERSITE"] = "1"
+    env["PYTHONUNBUFFERED"] = "1"
 
     python_paths = [str(PROJECT_ROOT)]
     existing = env.get("PYTHONPATH", "").strip()
