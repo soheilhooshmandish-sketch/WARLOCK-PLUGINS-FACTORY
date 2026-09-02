@@ -1,10 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $TaskName = "Warlock Plugins Factory"
-$Supervisor = Join-Path $PSScriptRoot "warlock-supervisor.ps1"
+$Bootstrap = Join-Path $PSScriptRoot "run-warlock-supervisor.cmd"
 
-if (-not (Test-Path -LiteralPath $Supervisor -PathType Leaf)) {
-    throw "Supervisor not found: $Supervisor"
+if (-not (Test-Path -LiteralPath $Bootstrap -PathType Leaf)) {
+    throw "Bootstrap not found: $Bootstrap"
 }
 
 $RequiredVariables = @(
@@ -20,8 +20,8 @@ foreach ($Name in $RequiredVariables) {
     }
 }
 
-$PowerShell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-$Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Supervisor`""
+$Cmd = "$env:SystemRoot\System32\cmd.exe"
+$Arguments = "/d /c `"`"$Bootstrap`"`""
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -30,7 +30,7 @@ if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
     Start-Sleep -Seconds 2
 }
 
-$Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments
+$Action = New-ScheduledTaskAction -Execute $Cmd -Argument $Arguments
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
 
 $SettingsParams = @{
