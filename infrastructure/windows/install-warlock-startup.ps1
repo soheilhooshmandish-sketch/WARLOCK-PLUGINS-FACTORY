@@ -73,6 +73,7 @@ function Invoke-RuntimePreflight {
 
     Write-Host "Running Warlock runtime preflight..."
     $PreviousPythonPath = $env:PYTHONPATH
+    $PreviousNoUserSite = $env:PYTHONNOUSERSITE
     try {
         if ([string]::IsNullOrWhiteSpace($PreviousPythonPath)) {
             $env:PYTHONPATH = $ProjectRoot
@@ -80,10 +81,11 @@ function Invoke-RuntimePreflight {
         else {
             $env:PYTHONPATH = "$ProjectRoot;$PreviousPythonPath"
         }
+        $env:PYTHONNOUSERSITE = "1"
 
         Push-Location $ProjectRoot
         try {
-            & $RuntimePython -m apps.runtime_child apps.runtime_preflight
+            & $RuntimePython -S -m apps.runtime_child apps.runtime_preflight
             if ($LASTEXITCODE -ne 0) {
                 throw "Warlock runtime preflight failed with exit code $LASTEXITCODE"
             }
@@ -94,6 +96,7 @@ function Invoke-RuntimePreflight {
     }
     finally {
         $env:PYTHONPATH = $PreviousPythonPath
+        $env:PYTHONNOUSERSITE = $PreviousNoUserSite
     }
 }
 
@@ -165,6 +168,7 @@ function Remove-ExistingWarlockTask {
 }
 
 function Show-RecentRuntimeLogs {
+    $ChildBootstrapLog = Join-Path $RuntimeDir "runtime-child.bootstrap.log"
     $BootstrapLog = Join-Path $RuntimeDir "supervisor.bootstrap.log"
     $SupervisorLog = Join-Path $RuntimeDir "supervisor.log"
     $AgentErrorLog = Join-Path $RuntimeDir "agent.err.log"
@@ -172,6 +176,7 @@ function Show-RecentRuntimeLogs {
     $McpErrorLog = Join-Path $RuntimeDir "mcp.err.log"
 
     foreach ($Entry in @(
+        @{ Path = $ChildBootstrapLog; Label = "runtime-child.bootstrap.log" },
         @{ Path = $BootstrapLog; Label = "supervisor.bootstrap.log" },
         @{ Path = $SupervisorLog; Label = "supervisor.log" },
         @{ Path = $AgentErrorLog; Label = "agent.err.log" },
@@ -193,8 +198,8 @@ Write-Host "Resolving physical Python runtime..."
 $RuntimePython = Resolve-PhysicalPython
 Write-Host "Physical Python runtime: $RuntimePython"
 
-# Validate the exact physical-interpreter + runtime-child path before stopping
-# any currently running Warlock task or service.
+# Validate the exact isolated physical-interpreter + runtime-child path before
+# stopping any currently running Warlock task or service.
 Invoke-RuntimePreflight -RuntimePython $RuntimePython
 
 Remove-ExistingWarlockTask
@@ -205,7 +210,7 @@ $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $Action = New-ScheduledTaskAction `
     -Execute $RuntimePython `
-    -Argument "-m apps.runtime_supervisor" `
+    -Argument "-S -m apps.runtime_supervisor" `
     -WorkingDirectory $ProjectRoot
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
 $Settings = New-ScheduledTaskSettingsSet `
@@ -229,7 +234,7 @@ Register-ScheduledTask `
 Start-ScheduledTask -TaskName $TaskName
 
 $SupervisorPidFile = Join-Path $RuntimeDir "supervisor.pid"
-$Deadline = (Get-Date).AddSeconds(30)
+$Deadline = (Get-Date).AddSeconds(60)
 do {
     $AgentHealthy = Test-WarlockHealth -Port 8765 -IdentityProperty "agent" -IdentityValue "Warlock Local Agent"
     $GatewayHealthy = Test-WarlockHealth -Port 8780 -IdentityProperty "gateway" -IdentityValue "warlock"
@@ -248,7 +253,7 @@ Write-Host "Warlock startup installed."
 Write-Host "User: $UserId"
 Write-Host "Task state: $($Task.State)"
 Write-Host "Last task result: $($Info.LastTaskResult)"
-Write-Host "Launcher: Task Scheduler -> physical Python runtime"
+Write-Host "Launcher: Task Scheduler -> physical Python runtime (-S isolated startup)"
 Write-Host "Runtime Python: $RuntimePython"
 Write-Host "Supervisor PID: $SupervisorPid"
 Write-Host "Agent 8765 healthy: $AgentHealthy"
@@ -259,5 +264,5 @@ Write-Host "Logs: .warlock\runtime"
 
 if (-not ($SupervisorReady -and $AgentHealthy -and $GatewayHealthy -and $McpHealthy)) {
     Show-RecentRuntimeLogs
-    throw "Warlock runtime did not become healthy within 30 seconds. See the logs printed above."
+    throw "Warlock runtime did not become healthy within 60 seconds. See the logs printed above."
 }
