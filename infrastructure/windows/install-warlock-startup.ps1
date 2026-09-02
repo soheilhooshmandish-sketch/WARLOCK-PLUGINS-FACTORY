@@ -22,8 +22,13 @@ foreach ($Name in $RequiredVariables) {
 
 $PowerShell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 $Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Supervisor`""
-
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+$ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
+    Stop-ScheduledTask -TaskName $TaskName
+    Start-Sleep -Seconds 2
+}
 
 $Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
