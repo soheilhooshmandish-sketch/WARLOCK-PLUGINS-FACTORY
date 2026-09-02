@@ -173,7 +173,6 @@ def start_service(service: Service) -> subprocess.Popen[bytes] | None:
             stdout=stdout,
             stderr=stderr,
             creationflags=creationflags,
-            close_fds=True,
         )
     except Exception:
         stdout.close()
