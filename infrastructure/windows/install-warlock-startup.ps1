@@ -5,6 +5,8 @@ $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $Supervisor = Join-Path $PSScriptRoot "warlock-supervisor.ps1"
 $HiddenLauncher = Join-Path $PSScriptRoot "run-warlock-supervisor-hidden.vbs"
 $RuntimeDir = Join-Path $ProjectRoot ".warlock\runtime"
+$Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+$Requirements = Join-Path $ProjectRoot "requirements.txt"
 
 if (-not (Test-Path -LiteralPath $Supervisor -PathType Leaf)) {
     throw "Supervisor not found: $Supervisor"
@@ -12,6 +14,14 @@ if (-not (Test-Path -LiteralPath $Supervisor -PathType Leaf)) {
 
 if (-not (Test-Path -LiteralPath $HiddenLauncher -PathType Leaf)) {
     throw "Hidden launcher not found: $HiddenLauncher"
+}
+
+if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) {
+    throw "Virtual environment Python not found: $Python"
+}
+
+if (-not (Test-Path -LiteralPath $Requirements -PathType Leaf)) {
+    throw "Requirements file not found: $Requirements"
 }
 
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
@@ -27,6 +37,12 @@ foreach ($Name in $RequiredVariables) {
     if ([string]::IsNullOrWhiteSpace($Value)) {
         throw "Required user environment variable is missing: $Name"
     }
+}
+
+Write-Host "Updating Warlock runtime dependencies..."
+& $Python -m pip install --disable-pip-version-check -r $Requirements
+if ($LASTEXITCODE -ne 0) {
+    throw "Dependency installation failed with exit code $LASTEXITCODE"
 }
 
 $WScript = "$env:SystemRoot\System32\wscript.exe"
@@ -65,7 +81,7 @@ $RegisterParams = @{
     Trigger = $Trigger
     Settings = $Settings
     Principal = $Principal
-    Description = "Starts and supervises the Warlock Local Agent, Gateway, and Cloudflare Tunnel without opening a console window."
+    Description = "Starts and supervises the Warlock Local Agent, Gateway, MCP server, and Cloudflare Tunnel without opening a console window."
     Force = $true
 }
 Register-ScheduledTask @RegisterParams | Out-Null
@@ -81,4 +97,5 @@ Write-Host "User: $UserId"
 Write-Host "Task state: $($Task.State)"
 Write-Host "Last task result: $($Info.LastTaskResult)"
 Write-Host "Launcher: hidden"
+Write-Host "MCP: http://127.0.0.1:8790/mcp"
 Write-Host "Logs: .warlock\runtime"
