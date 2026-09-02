@@ -60,6 +60,11 @@ try {
             Arguments = @("-m", "uvicorn", "apps.gateway.server:app", "--host", "127.0.0.1", "--port", "8780")
         },
         @{
+            Name = "mcp"
+            FilePath = $Python
+            Arguments = @("-m", "apps.mcp_server.run_mcp")
+        },
+        @{
             Name = "tunnel"
             FilePath = $Cloudflared
             Arguments = @("tunnel", "--config", $CloudflareConfig, "run", "warlock-agent")
