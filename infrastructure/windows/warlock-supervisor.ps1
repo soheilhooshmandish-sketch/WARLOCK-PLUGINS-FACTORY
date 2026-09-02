@@ -6,9 +6,11 @@ $Cloudflared = Join-Path $ProjectRoot "infrastructure\cloudflare\cloudflared.exe
 $CloudflareConfig = Join-Path $ProjectRoot "infrastructure\cloudflare\config\config.yml"
 $RuntimeDir = Join-Path $ProjectRoot ".warlock\runtime"
 $SupervisorLog = Join-Path $RuntimeDir "supervisor.log"
+$SupervisorPid = Join-Path $RuntimeDir "supervisor.pid"
 
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
 Set-Location $ProjectRoot
+Set-Content -LiteralPath $SupervisorPid -Value $PID -NoNewline
 
 function Write-SupervisorLog {
     param([Parameter(Mandatory = $true)][string]$Message)
@@ -35,8 +37,13 @@ function Assert-FileExists {
     }
 }
 
+function Get-ServicePidPath {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    return (Join-Path $RuntimeDir "$Name.pid")
+}
+
 try {
-    Write-SupervisorLog "Supervisor starting."
+    Write-SupervisorLog "Supervisor starting (PID $PID)."
 
     Assert-FileExists $Python
     Assert-FileExists $Cloudflared
@@ -79,6 +86,7 @@ try {
         $Name = $Service.Name
         $Stdout = Join-Path $RuntimeDir "$Name.out.log"
         $Stderr = Join-Path $RuntimeDir "$Name.err.log"
+        $PidPath = Get-ServicePidPath $Name
 
         try {
             Write-SupervisorLog "Starting service: $Name"
@@ -95,9 +103,11 @@ try {
 
             $Process = Start-Process @StartParams
             $Processes[$Name] = $Process
+            Set-Content -LiteralPath $PidPath -Value $Process.Id -NoNewline
             Write-SupervisorLog "Started service: $Name (PID $($Process.Id))"
         }
         catch {
+            Remove-Item -LiteralPath $PidPath -Force -ErrorAction SilentlyContinue
             Write-SupervisorLog "Failed to start service: $Name | $($_.Exception.Message)"
             $Processes[$Name] = $null
         }
@@ -116,6 +126,8 @@ try {
             $Process = $Processes[$Name]
 
             if ($null -eq $Process -or $Process.HasExited) {
+                Remove-Item -LiteralPath (Get-ServicePidPath $Name) -Force -ErrorAction SilentlyContinue
+
                 if ($null -ne $Process -and $Process.HasExited) {
                     Write-SupervisorLog "Service exited: $Name (exit code $($Process.ExitCode))"
                 }
@@ -132,12 +144,15 @@ catch {
 }
 finally {
     if ($null -ne $Processes) {
-        foreach ($Process in $Processes.Values) {
+        foreach ($Name in @($Processes.Keys)) {
+            $Process = $Processes[$Name]
             if ($null -ne $Process -and -not $Process.HasExited) {
                 Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
             }
+            Remove-Item -LiteralPath (Get-ServicePidPath $Name) -Force -ErrorAction SilentlyContinue
         }
     }
 
+    Remove-Item -LiteralPath $SupervisorPid -Force -ErrorAction SilentlyContinue
     Write-SupervisorLog "Supervisor stopped."
 }
