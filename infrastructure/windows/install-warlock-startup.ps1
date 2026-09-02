@@ -23,8 +23,10 @@ foreach ($Name in $RequiredVariables) {
 $PowerShell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
 $Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Supervisor`""
 
+$UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+
 $Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments
-$Trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+$Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
 
 $SettingsParams = @{
     AllowStartIfOnBatteries = $true
@@ -37,7 +39,7 @@ $SettingsParams = @{
 $Settings = New-ScheduledTaskSettingsSet @SettingsParams
 
 $PrincipalParams = @{
-    UserId = $env:USERNAME
+    UserId = $UserId
     LogonType = "Interactive"
     RunLevel = "Limited"
 }
@@ -61,6 +63,7 @@ $Task = Get-ScheduledTask -TaskName $TaskName
 $Info = Get-ScheduledTaskInfo -TaskName $TaskName
 
 Write-Host "Warlock startup installed."
+Write-Host "User: $UserId"
 Write-Host "Task state: $($Task.State)"
 Write-Host "Last task result: $($Info.LastTaskResult)"
 Write-Host "Logs: .warlock\runtime"
