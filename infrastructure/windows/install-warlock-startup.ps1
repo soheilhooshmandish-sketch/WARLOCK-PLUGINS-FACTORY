@@ -21,7 +21,8 @@ foreach ($Name in $RequiredVariables) {
 }
 
 $Cmd = "$env:SystemRoot\System32\cmd.exe"
-$Arguments = "/d /c `"`"$Bootstrap`"`""
+$Arguments = "/d /c run-warlock-supervisor.cmd"
+$WorkingDirectory = $PSScriptRoot
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 $ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
@@ -30,7 +31,7 @@ if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
     Start-Sleep -Seconds 2
 }
 
-$Action = New-ScheduledTaskAction -Execute $Cmd -Argument $Arguments
+$Action = New-ScheduledTaskAction -Execute $Cmd -Argument $Arguments -WorkingDirectory $WorkingDirectory
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
 
 $SettingsParams = @{
