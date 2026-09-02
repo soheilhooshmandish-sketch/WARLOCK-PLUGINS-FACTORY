@@ -120,3 +120,7 @@ def git_add_all() -> dict[str, Any]:
 def git_commit(message: str) -> dict[str, Any]:
     """Commit staged changes with a non-empty commit message."""
     return _request("POST", "/git/commit", {"message": message})
+
+
+# Stable ASGI entrypoint for uvicorn and the Windows Supervisor.
+app = mcp.streamable_http_app()
