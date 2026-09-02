@@ -31,8 +31,6 @@ Assert-FileExists $Python
 Assert-FileExists $Cloudflared
 Assert-FileExists $CloudflareConfig
 
-# Read secrets/configuration from the current user's environment store.
-# Values are injected into this supervisor process only and are never printed.
 $env:WARLOCK_AGENT_TOKEN = Get-UserEnvironmentValue "WARLOCK_AGENT_TOKEN"
 $env:WARLOCK_CF_TEAM_DOMAIN = Get-UserEnvironmentValue "WARLOCK_CF_TEAM_DOMAIN"
 $env:WARLOCK_CF_ACCESS_AUD = Get-UserEnvironmentValue "WARLOCK_CF_ACCESS_AUD"
@@ -64,15 +62,17 @@ function Start-WarlockService {
     $Stdout = Join-Path $RuntimeDir "$Name.out.log"
     $Stderr = Join-Path $RuntimeDir "$Name.err.log"
 
-    $Process = Start-Process \
-        -FilePath $Service.FilePath \
-        -ArgumentList $Service.Arguments \
-        -WorkingDirectory $ProjectRoot \
-        -WindowStyle Hidden \
-        -RedirectStandardOutput $Stdout \
-        -RedirectStandardError $Stderr \
-        -PassThru
+    $StartParams = @{
+        FilePath = $Service.FilePath
+        ArgumentList = $Service.Arguments
+        WorkingDirectory = $ProjectRoot
+        WindowStyle = "Hidden"
+        RedirectStandardOutput = $Stdout
+        RedirectStandardError = $Stderr
+        PassThru = $true
+    }
 
+    $Process = Start-Process @StartParams
     $Processes[$Name] = $Process
 }
 
