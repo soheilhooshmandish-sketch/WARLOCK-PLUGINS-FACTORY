@@ -2,9 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $TaskName = "Warlock Plugins Factory"
 $Supervisor = Join-Path $PSScriptRoot "warlock-supervisor.ps1"
-$RuntimeDir = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path ".warlock\runtime")
-$TaskStdout = Join-Path $RuntimeDir "task.out.log"
-$TaskStderr = Join-Path $RuntimeDir "task.err.log"
+$RuntimeDir = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path ".warlock\runtime"
 
 if (-not (Test-Path -LiteralPath $Supervisor -PathType Leaf)) {
     throw "Supervisor not found: $Supervisor"
@@ -26,13 +24,14 @@ foreach ($Name in $RequiredVariables) {
 }
 
 $PowerShell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-$EscapedSupervisor = $Supervisor.Replace("'", "''")
-$EscapedStdout = $TaskStdout.Replace("'", "''")
-$EscapedStderr = $TaskStderr.Replace("'", "''")
-$Command = "& '$EscapedSupervisor' 1>>'$EscapedStdout' 2>>'$EscapedStderr'"
-$Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"$Command`""
-$WorkingDirectory = $PSScriptRoot
 $UserId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+# Encode the launch command as UTF-16LE Base64 so Task Scheduler does not
+# have to parse nested quotes around paths and PowerShell expressions.
+$SupervisorLiteral = $Supervisor.Replace("'", "''")
+$LaunchCommand = "Set-Location -LiteralPath '$($PSScriptRoot.Replace("'", "''"))'; & '$SupervisorLiteral'"
+$EncodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($LaunchCommand))
+$Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand $EncodedCommand"
 
 $ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
@@ -40,7 +39,7 @@ if ($null -ne $ExistingTask -and $ExistingTask.State -eq "Running") {
     Start-Sleep -Seconds 2
 }
 
-$Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments -WorkingDirectory $WorkingDirectory
+$Action = New-ScheduledTaskAction -Execute $PowerShell -Argument $Arguments -WorkingDirectory $PSScriptRoot
 $Trigger = New-ScheduledTaskTrigger -AtLogOn -User $UserId
 
 $SettingsParams = @{
