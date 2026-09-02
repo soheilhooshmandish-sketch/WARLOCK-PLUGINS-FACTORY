@@ -25,11 +25,11 @@ On Error Resume Next
 shell.CurrentDirectory = projectRoot
 LogMessage "Hidden launcher starting supervisor."
 command = "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & supervisor & """"
-shell.Run command, 0, False
+shell.Run command, 0, True
 If Err.Number <> 0 Then
-    LogMessage "Failed to launch supervisor: " & Err.Description
+    LogMessage "Supervisor exited with launcher error: " & Err.Description
     Err.Clear
 Else
-    LogMessage "Supervisor launch requested successfully."
+    LogMessage "Supervisor process exited."
 End If
 On Error GoTo 0
