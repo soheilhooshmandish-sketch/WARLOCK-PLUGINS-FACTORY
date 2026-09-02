@@ -36,6 +36,15 @@ HEALTH_FAILURE_THRESHOLD = 3
 HEALTH_CHECK_INTERVAL_SECONDS = 5
 
 
+if os.name == "nt":
+    from ctypes import wintypes
+
+    PROCESS_TERMINATE = 0x0001
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    SYNCHRONIZE = 0x00100000
+    WAIT_TIMEOUT = 0x00000102
+
+
 def physical_python_executable() -> Path:
     """Return the actual running Windows Python image, bypassing the venv launcher."""
     if os.name != "nt":
@@ -59,6 +68,19 @@ class Service:
     health_path: str | None = None
     identity_key: str | None = None
     identity_value: str | None = None
+    expected_executable: Path | None = None
+
+
+@dataclass
+class ManagedProcess:
+    pid: int
+    popen: subprocess.Popen[bytes] | None = None
+    adopted: bool = False
+
+    def poll(self) -> int | None:
+        if self.popen is not None:
+            return self.popen.poll()
+        return None if process_is_alive(self.pid) else 1
 
 
 SERVICES = (
@@ -75,6 +97,7 @@ SERVICES = (
         health_path="/health",
         identity_key="agent",
         identity_value="Warlock Local Agent",
+        expected_executable=RUNTIME_PYTHON,
     ),
     Service(
         "gateway",
@@ -94,6 +117,7 @@ SERVICES = (
         health_path="/health",
         identity_key="gateway",
         identity_value="warlock",
+        expected_executable=RUNTIME_PYTHON,
     ),
     Service(
         "mcp",
@@ -108,6 +132,7 @@ SERVICES = (
         health_path="/health",
         identity_key="service",
         identity_value="warlock-mcp",
+        expected_executable=RUNTIME_PYTHON,
     ),
     Service(
         "tunnel",
@@ -119,6 +144,7 @@ SERVICES = (
             "run",
             "warlock-agent",
         ),
+        expected_executable=CLOUDFLARED,
     ),
 )
 
@@ -198,11 +224,126 @@ def pid_path(name: str) -> Path:
     return RUNTIME_DIR / f"{name}.pid"
 
 
+def read_pid(name: str) -> int | None:
+    try:
+        value = pid_path(name).read_text(encoding="ascii").strip()
+        pid = int(value)
+        return pid if pid > 0 else None
+    except (FileNotFoundError, OSError, ValueError):
+        return None
+
+
 def remove_pid(name: str) -> None:
     try:
         pid_path(name).unlink()
     except FileNotFoundError:
         pass
+
+
+def process_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+
+    if os.name != "nt":
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+    handle = ctypes.windll.kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+    if not handle:
+        return False
+    try:
+        return ctypes.windll.kernel32.WaitForSingleObject(handle, 0) == WAIT_TIMEOUT
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+def process_image_path(pid: int) -> Path | None:
+    if pid <= 0:
+        return None
+
+    if os.name != "nt":
+        try:
+            return Path(f"/proc/{pid}/exe").resolve()
+        except OSError:
+            return None
+
+    access = PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE
+    handle = ctypes.windll.kernel32.OpenProcess(access, False, pid)
+    if not handle:
+        return None
+    try:
+        size = wintypes.DWORD(32768)
+        buffer = ctypes.create_unicode_buffer(size.value)
+        success = ctypes.windll.kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size))
+        if not success:
+            return None
+        return Path(buffer.value)
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+def terminate_pid(pid: int) -> None:
+    if pid <= 0 or not process_is_alive(pid):
+        return
+
+    if os.name != "nt":
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+        return
+
+    handle = ctypes.windll.kernel32.OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, False, pid)
+    if not handle:
+        return
+    try:
+        ctypes.windll.kernel32.TerminateProcess(handle, 1)
+        ctypes.windll.kernel32.WaitForSingleObject(handle, 4000)
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+def path_matches(left: Path | None, right: Path | None) -> bool:
+    if left is None or right is None:
+        return False
+    try:
+        left_text = str(left.resolve())
+    except OSError:
+        left_text = str(left)
+    try:
+        right_text = str(right.resolve())
+    except OSError:
+        right_text = str(right)
+    if os.name == "nt":
+        return left_text.casefold() == right_text.casefold()
+    return left_text == right_text
+
+
+def adopt_existing_process(service: Service) -> ManagedProcess | None:
+    pid = read_pid(service.name)
+    if pid is None or not process_is_alive(pid):
+        if pid is not None:
+            remove_pid(service.name)
+        return None
+
+    if service.expected_executable is not None:
+        actual = process_image_path(pid)
+        if not path_matches(actual, service.expected_executable):
+            log(
+                f"Refusing stale PID ownership for {service.name}: PID {pid} executable "
+                f"{actual or 'unknown'} does not match {service.expected_executable}."
+            )
+            remove_pid(service.name)
+            return None
+
+    if service.port is not None and not is_service_healthy(service):
+        return None
+
+    log(f"Adopted existing Warlock service: {service.name} (PID {pid})")
+    return ManagedProcess(pid=pid, popen=None, adopted=True)
 
 
 def child_environment() -> dict[str, str]:
@@ -220,15 +361,16 @@ def child_environment() -> dict[str, str]:
     return env
 
 
-def start_service(service: Service) -> subprocess.Popen[bytes] | None:
+def start_service(service: Service) -> ManagedProcess:
+    adopted = adopt_existing_process(service)
+    if adopted is not None:
+        return adopted
+
     if service.port is not None:
         if is_service_healthy(service):
-            log(
-                f"Service already healthy: {service.name} on 127.0.0.1:{service.port}; "
-                "adopting existing listener without a process handle."
+            raise RuntimeError(
+                f"Healthy Warlock listener exists on 127.0.0.1:{service.port} but no valid owned PID is available"
             )
-            remove_pid(service.name)
-            return None
         if is_listening(service.port):
             raise RuntimeError(
                 f"Port 127.0.0.1:{service.port} is occupied but failed Warlock identity/health checks"
@@ -255,26 +397,29 @@ def start_service(service: Service) -> subprocess.Popen[bytes] | None:
 
     pid_path(service.name).write_text(str(process.pid), encoding="ascii")
     log(f"Started service: {service.name} (PID {process.pid})")
-    return process
+    return ManagedProcess(pid=process.pid, popen=process, adopted=False)
 
 
-def stop_process(process: subprocess.Popen[bytes] | None) -> None:
+def stop_process(process: ManagedProcess | None) -> None:
     if process is None or process.poll() is not None:
         return
-    try:
-        process.terminate()
-        process.wait(timeout=4)
-    except Exception:
+
+    if process.popen is not None:
         try:
-            process.kill()
+            process.popen.terminate()
+            process.popen.wait(timeout=4)
+            return
         except Exception:
-            pass
+            try:
+                process.popen.kill()
+                return
+            except Exception:
+                pass
+
+    terminate_pid(process.pid)
 
 
-def restart_service(
-    service: Service,
-    process: subprocess.Popen[bytes] | None,
-) -> subprocess.Popen[bytes] | None:
+def restart_service(service: Service, process: ManagedProcess | None) -> ManagedProcess:
     stop_process(process)
     remove_pid(service.name)
     time.sleep(1)
@@ -302,7 +447,7 @@ def main() -> int:
     log(f"Child bootstrap: {RUNTIME_CHILD}")
     log("Required files and user environment values validated.")
 
-    processes: dict[str, subprocess.Popen[bytes] | None] = {}
+    processes: dict[str, ManagedProcess | None] = {}
     health_failures: dict[str, int] = {service.name: 0 for service in SERVICES}
     stopping = False
 
@@ -333,18 +478,7 @@ def main() -> int:
                 process = processes.get(service.name)
 
                 if process is None:
-                    if service.port is None:
-                        try:
-                            processes[service.name] = start_service(service)
-                        except Exception as exc:
-                            log(f"Failed to start service: {service.name} | {exc}")
-                        continue
-
-                    if is_service_healthy(service):
-                        health_failures[service.name] = 0
-                        continue
-
-                    if is_listening(service.port):
+                    if service.port is not None and is_listening(service.port) and not is_service_healthy(service):
                         health_failures[service.name] += 1
                         if health_failures[service.name] == 1 or health_failures[service.name] % 6 == 0:
                             log(
