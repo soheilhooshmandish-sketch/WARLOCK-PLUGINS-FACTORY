@@ -8,6 +8,7 @@ $Pythonw = Join-Path $ProjectRoot ".venv\Scripts\pythonw.exe"
 $Requirements = Join-Path $ProjectRoot "requirements.txt"
 $RuntimeChild = Join-Path $ProjectRoot "apps\runtime_child.py"
 $RuntimePreflight = Join-Path $ProjectRoot "apps\runtime_preflight.py"
+$PhysicalPythonResolver = Join-Path $PSScriptRoot "resolve_physical_python.py"
 $Cloudflared = Join-Path $ProjectRoot "infrastructure\cloudflare\cloudflared.exe"
 $LegacySupervisor = Join-Path $PSScriptRoot "warlock-supervisor.ps1"
 $LegacyVbs = Join-Path $PSScriptRoot "run-warlock-supervisor-hidden.vbs"
@@ -16,6 +17,7 @@ if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) { throw "Virtual envir
 if (-not (Test-Path -LiteralPath $Requirements -PathType Leaf)) { throw "Requirements file not found: $Requirements" }
 if (-not (Test-Path -LiteralPath $RuntimeChild -PathType Leaf)) { throw "Runtime child bootstrap not found: $RuntimeChild" }
 if (-not (Test-Path -LiteralPath $RuntimePreflight -PathType Leaf)) { throw "Runtime preflight module not found: $RuntimePreflight" }
+if (-not (Test-Path -LiteralPath $PhysicalPythonResolver -PathType Leaf)) { throw "Physical Python resolver not found: $PhysicalPythonResolver" }
 if (-not (Test-Path -LiteralPath $Cloudflared -PathType Leaf)) { throw "cloudflared not found: $Cloudflared" }
 
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
@@ -51,22 +53,12 @@ function Test-WarlockHealth {
 }
 
 function Resolve-PhysicalPython {
-    $Probe = @'
-import ctypes
-import pathlib
-import sys
+    $Output = & $Python $PhysicalPythonResolver
+    if ($LASTEXITCODE -ne 0) {
+        throw "Physical Python resolver failed with exit code $LASTEXITCODE"
+    }
 
-if sys.platform != "win32":
-    print(pathlib.Path(sys.executable).resolve())
-else:
-    buffer = ctypes.create_unicode_buffer(32768)
-    length = ctypes.windll.kernel32.GetModuleFileNameW(None, buffer, len(buffer))
-    if not length:
-        raise SystemExit("GetModuleFileNameW failed")
-    print(buffer.value)
-'@
-
-    $Resolved = (& $Python -c $Probe 2>&1 | Select-Object -Last 1).ToString().Trim()
+    $Resolved = ($Output | Select-Object -Last 1).ToString().Trim()
     if ([string]::IsNullOrWhiteSpace($Resolved)) {
         throw "Could not resolve the physical Python runtime behind the virtual environment launcher."
     }
