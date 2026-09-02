@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import json
 import os
 import signal
 import socket
@@ -8,6 +9,8 @@ import subprocess
 import sys
 import time
 import traceback
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
@@ -29,6 +32,8 @@ CLOUDFLARE_CONFIG = PROJECT_ROOT / "infrastructure" / "cloudflare" / "config" / 
 SUPERVISOR_LOG = RUNTIME_DIR / "supervisor.log"
 SUPERVISOR_PID = RUNTIME_DIR / "supervisor.pid"
 BOOTSTRAP_LOG = RUNTIME_DIR / "supervisor.bootstrap.log"
+HEALTH_FAILURE_THRESHOLD = 3
+HEALTH_CHECK_INTERVAL_SECONDS = 5
 
 
 def physical_python_executable() -> Path:
@@ -51,6 +56,9 @@ class Service:
     name: str
     command: tuple[str, ...]
     port: int | None = None
+    health_path: str | None = None
+    identity_key: str | None = None
+    identity_value: str | None = None
 
 
 SERVICES = (
@@ -62,7 +70,10 @@ SERVICES = (
             "apps.runtime_child",
             "apps.local_agent.run_agent",
         ),
-        8765,
+        port=8765,
+        health_path="/health",
+        identity_key="agent",
+        identity_value="Warlock Local Agent",
     ),
     Service(
         "gateway",
@@ -77,7 +88,10 @@ SERVICES = (
             "--port",
             "8780",
         ),
-        8780,
+        port=8780,
+        health_path="/health",
+        identity_key="gateway",
+        identity_value="warlock",
     ),
     Service(
         "mcp",
@@ -87,7 +101,10 @@ SERVICES = (
             "apps.runtime_child",
             "apps.mcp_server.run_mcp",
         ),
-        8790,
+        port=8790,
+        health_path="/health",
+        identity_key="service",
+        identity_value="warlock-mcp",
     ),
     Service(
         "tunnel",
@@ -99,7 +116,6 @@ SERVICES = (
             "run",
             "warlock-agent",
         ),
-        None,
     ),
 )
 
@@ -145,6 +161,31 @@ def is_listening(port: int) -> bool:
         return False
 
 
+def is_service_healthy(service: Service) -> bool:
+    if service.port is None or service.health_path is None:
+        return False
+
+    url = f"http://127.0.0.1:{service.port}{service.health_path}"
+    try:
+        request = urllib.request.Request(
+            url,
+            headers={"User-Agent": "WarlockRuntimeSupervisor/1"},
+            method="GET",
+        )
+        with urllib.request.urlopen(request, timeout=0.8) as response:
+            if response.status != 200:
+                return False
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, urllib.error.URLError, ValueError, json.JSONDecodeError):
+        return False
+
+    if payload.get("status") != "healthy":
+        return False
+    if service.identity_key is not None:
+        return payload.get(service.identity_key) == service.identity_value
+    return True
+
+
 def open_log(name: str, suffix: str) -> IO[bytes]:
     path = RUNTIME_DIR / f"{name}.{suffix}.log"
     return path.open("ab", buffering=0)
@@ -175,10 +216,18 @@ def child_environment() -> dict[str, str]:
 
 
 def start_service(service: Service) -> subprocess.Popen[bytes] | None:
-    if service.port is not None and is_listening(service.port):
-        log(f"Service already listening: {service.name} on 127.0.0.1:{service.port}; leaving existing process untouched.")
-        remove_pid(service.name)
-        return None
+    if service.port is not None:
+        if is_service_healthy(service):
+            log(
+                f"Service already healthy: {service.name} on 127.0.0.1:{service.port}; "
+                "adopting existing listener without a process handle."
+            )
+            remove_pid(service.name)
+            return None
+        if is_listening(service.port):
+            raise RuntimeError(
+                f"Port 127.0.0.1:{service.port} is occupied but failed Warlock identity/health checks"
+            )
 
     stdout = open_log(service.name, "out")
     stderr = open_log(service.name, "err")
@@ -217,6 +266,16 @@ def stop_process(process: subprocess.Popen[bytes] | None) -> None:
             pass
 
 
+def restart_service(
+    service: Service,
+    process: subprocess.Popen[bytes] | None,
+) -> subprocess.Popen[bytes] | None:
+    stop_process(process)
+    remove_pid(service.name)
+    time.sleep(1)
+    return start_service(service)
+
+
 def main() -> int:
     bootstrap_log("entered main")
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
@@ -239,6 +298,7 @@ def main() -> int:
     log("Required files and user environment values validated.")
 
     processes: dict[str, subprocess.Popen[bytes] | None] = {}
+    health_failures: dict[str, int] = {service.name: 0 for service in SERVICES}
     stopping = False
 
     def request_stop(*_: object) -> None:
@@ -263,7 +323,7 @@ def main() -> int:
             time.sleep(1)
 
         while not stopping:
-            time.sleep(5)
+            time.sleep(HEALTH_CHECK_INTERVAL_SECONDS)
             for service in SERVICES:
                 process = processes.get(service.name)
 
@@ -275,24 +335,61 @@ def main() -> int:
                             log(f"Failed to start service: {service.name} | {exc}")
                         continue
 
-                    if not is_listening(service.port):
-                        try:
-                            processes[service.name] = start_service(service)
-                        except Exception as exc:
-                            log(f"Failed to start service: {service.name} | {exc}")
+                    if is_service_healthy(service):
+                        health_failures[service.name] = 0
+                        continue
+
+                    if is_listening(service.port):
+                        health_failures[service.name] += 1
+                        if health_failures[service.name] == 1 or health_failures[service.name] % 6 == 0:
+                            log(
+                                f"Health conflict: {service.name} port {service.port} is listening "
+                                "but does not identify as the expected Warlock service."
+                            )
+                        continue
+
+                    health_failures[service.name] = 0
+                    try:
+                        processes[service.name] = start_service(service)
+                    except Exception as exc:
+                        log(f"Failed to start service: {service.name} | {exc}")
                     continue
 
                 exit_code = process.poll()
-                if exit_code is None:
+                if exit_code is not None:
+                    remove_pid(service.name)
+                    health_failures[service.name] = 0
+                    log(f"Service exited: {service.name} (exit code {exit_code}). Error log: {service.name}.err.log")
+                    time.sleep(1)
+                    try:
+                        processes[service.name] = start_service(service)
+                    except Exception as exc:
+                        log(f"Failed to restart service: {service.name} | {exc}")
+                        processes[service.name] = None
                     continue
 
-                remove_pid(service.name)
-                log(f"Service exited: {service.name} (exit code {exit_code}). Error log: {service.name}.err.log")
-                time.sleep(2)
+                if service.port is None:
+                    continue
+
+                if is_service_healthy(service):
+                    health_failures[service.name] = 0
+                    continue
+
+                health_failures[service.name] += 1
+                failures = health_failures[service.name]
+                if failures == 1:
+                    log(f"Service health check failed: {service.name}; waiting before restart.")
+                if failures < HEALTH_FAILURE_THRESHOLD:
+                    continue
+
+                log(
+                    f"Service unhealthy for {failures} consecutive checks: {service.name}; restarting owned process."
+                )
+                health_failures[service.name] = 0
                 try:
-                    processes[service.name] = start_service(service)
+                    processes[service.name] = restart_service(service, process)
                 except Exception as exc:
-                    log(f"Failed to restart service: {service.name} | {exc}")
+                    log(f"Failed to recover service: {service.name} | {exc}")
                     processes[service.name] = None
     finally:
         bootstrap_log("entering shutdown cleanup")
