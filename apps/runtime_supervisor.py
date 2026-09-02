@@ -4,7 +4,9 @@ import os
 import signal
 import socket
 import subprocess
+import sys
 import time
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
@@ -22,6 +24,7 @@ CLOUDFLARED = PROJECT_ROOT / "infrastructure" / "cloudflare" / "cloudflared.exe"
 CLOUDFLARE_CONFIG = PROJECT_ROOT / "infrastructure" / "cloudflare" / "config" / "config.yml"
 SUPERVISOR_LOG = RUNTIME_DIR / "supervisor.log"
 SUPERVISOR_PID = RUNTIME_DIR / "supervisor.pid"
+BOOTSTRAP_LOG = RUNTIME_DIR / "supervisor.bootstrap.log"
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,16 @@ SERVICES = (
         None,
     ),
 )
+
+
+def bootstrap_log(message: str) -> None:
+    try:
+        RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with BOOTSTRAP_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(f"[{timestamp}] PID {os.getpid()} | {message}\n")
+    except BaseException:
+        pass
 
 
 def log(message: str) -> None:
@@ -154,8 +167,10 @@ def stop_process(process: subprocess.Popen[bytes] | None) -> None:
 
 
 def main() -> int:
+    bootstrap_log("entered main")
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
     SUPERVISOR_PID.write_text(str(os.getpid()), encoding="ascii")
+    bootstrap_log(f"wrote supervisor pid file: {SUPERVISOR_PID}")
     os.chdir(PROJECT_ROOT)
 
     for required in (PYTHON, CLOUDFLARED, CLOUDFLARE_CONFIG):
@@ -174,6 +189,7 @@ def main() -> int:
 
     def request_stop(*_: object) -> None:
         nonlocal stopping
+        bootstrap_log("stop signal received")
         stopping = True
 
     for sig in (getattr(signal, "SIGINT", None), getattr(signal, "SIGTERM", None), getattr(signal, "SIGBREAK", None)):
@@ -225,6 +241,7 @@ def main() -> int:
                     log(f"Failed to restart service: {service.name} | {exc}")
                     processes[service.name] = None
     finally:
+        bootstrap_log("entering shutdown cleanup")
         for service in SERVICES:
             stop_process(processes.get(service.name))
             remove_pid(service.name)
@@ -237,15 +254,27 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+def run() -> int:
+    bootstrap_log(f"module run invoked | executable={sys.executable} | cwd={Path.cwd()}")
     try:
-        raise SystemExit(main())
-    except Exception as exc:
+        return main()
+    except BaseException as exc:
+        bootstrap_log(f"fatal {type(exc).__name__}: {exc}")
         try:
-            log(f"Supervisor fatal error: {exc}")
-        finally:
-            try:
-                SUPERVISOR_PID.unlink()
-            except FileNotFoundError:
-                pass
+            log(f"Supervisor fatal error: {type(exc).__name__}: {exc}")
+        except BaseException:
+            pass
+        try:
+            SUPERVISOR_PID.unlink()
+        except FileNotFoundError:
+            pass
+        except BaseException:
+            pass
+        if sys.stderr is not None:
+            traceback.print_exc()
         raise
+
+
+if __name__ == "__main__":
+    bootstrap_log("__main__ reached")
+    raise SystemExit(run())
