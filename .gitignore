@@ -35,3 +35,7 @@ tmp/
 temp/agent.log
 .warlock/
 infrastructure/cloudflare/cloudflared.exe
+infrastructure/cloudflare/**/*.json 
+infrastructure/cloudflare/**/*.pem
+infrastructure/cloudflare/**/*.json 
+infrastructure/cloudflare/**/*.pem
