@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-cd /d "%~dp0"
+cd /d "C:\Users\sohei\WARLOCK-PLUGINS-FACTORY"
 
 if not exist ".venv\Scripts\python.exe" (
     echo ERROR: Warlock virtual environment not found.
