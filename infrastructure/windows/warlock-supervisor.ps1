@@ -35,6 +35,16 @@ function Get-ServicePidPath {
     return (Join-Path $RuntimeDir "$Name.pid")
 }
 
+function Test-LocalPort {
+    param([Parameter(Mandatory = $true)][int]$Port)
+    try {
+        return @(Get-NetTCPConnection -LocalAddress "127.0.0.1" -LocalPort $Port -State Listen -ErrorAction Stop).Count -gt 0
+    }
+    catch {
+        return $false
+    }
+}
+
 try {
     Write-SupervisorLog "Supervisor starting."
 
@@ -49,22 +59,28 @@ try {
     Write-SupervisorLog "Required files and user environment values validated."
 
     $Services = @(
-        @{ Name = "agent"; FilePath = $Python; Arguments = @("-m", "apps.local_agent.run_agent") },
-        @{ Name = "gateway"; FilePath = $Python; Arguments = @("-m", "uvicorn", "apps.gateway.server:app", "--host", "127.0.0.1", "--port", "8780") },
-        @{ Name = "mcp"; FilePath = $Python; Arguments = @("-m", "apps.mcp_server.run_mcp") },
-        @{ Name = "tunnel"; FilePath = $Cloudflared; Arguments = @("tunnel", "--config", $CloudflareConfig, "run", "warlock-agent") }
+        @{ Name = "agent"; FilePath = $Python; Arguments = @("-m", "apps.local_agent.run_agent"); Port = 8765 },
+        @{ Name = "gateway"; FilePath = $Python; Arguments = @("-m", "uvicorn", "apps.gateway.server:app", "--host", "127.0.0.1", "--port", "8780"); Port = 8780 },
+        @{ Name = "mcp"; FilePath = $Python; Arguments = @("-m", "apps.mcp_server.run_mcp"); Port = 8790 },
+        @{ Name = "tunnel"; FilePath = $Cloudflared; Arguments = @("tunnel", "--config", $CloudflareConfig, "run", "warlock-agent"); Port = $null }
     )
 
     $Processes = @{}
-    $LastStart = @{}
 
     function Start-WarlockService {
         param([Parameter(Mandatory = $true)][hashtable]$Service)
 
         $Name = $Service.Name
+        $Port = $Service.Port
         $Stdout = Join-Path $RuntimeDir "$Name.out.log"
         $Stderr = Join-Path $RuntimeDir "$Name.err.log"
         $PidPath = Get-ServicePidPath $Name
+
+        if ($null -ne $Port -and (Test-LocalPort $Port)) {
+            Write-SupervisorLog "Service already listening: $Name on 127.0.0.1:$Port; leaving existing process untouched."
+            $Processes[$Name] = $null
+            return
+        }
 
         try {
             Write-SupervisorLog "Starting service: $Name"
@@ -79,7 +95,6 @@ try {
             }
             $Process = Start-Process @StartParams
             $Processes[$Name] = $Process
-            $LastStart[$Name] = Get-Date
             Set-Content -LiteralPath $PidPath -Value $Process.Id -NoNewline
             Write-SupervisorLog "Started service: $Name (PID $($Process.Id))"
         }
@@ -102,14 +117,17 @@ try {
             $Name = $Service.Name
             $Process = $Processes[$Name]
 
-            if ($null -eq $Process -or $Process.HasExited) {
-                Remove-Item -LiteralPath (Get-ServicePidPath $Name) -Force -ErrorAction SilentlyContinue
-
-                if ($null -ne $Process -and $Process.HasExited) {
-                    $ExitCode = $Process.ExitCode
-                    Write-SupervisorLog "Service exited: $Name (exit code $ExitCode). Error log: $Name.err.log"
+            if ($null -eq $Process) {
+                if ($null -ne $Service.Port -and -not (Test-LocalPort $Service.Port)) {
+                    Start-WarlockService $Service
                 }
+                continue
+            }
 
+            if ($Process.HasExited) {
+                Remove-Item -LiteralPath (Get-ServicePidPath $Name) -Force -ErrorAction SilentlyContinue
+                $ExitCode = $Process.ExitCode
+                Write-SupervisorLog "Service exited: $Name (exit code $ExitCode). Error log: $Name.err.log"
                 Start-Sleep -Seconds 2
                 Start-WarlockService $Service
             }
