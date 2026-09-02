@@ -10,6 +10,7 @@ CRITICAL_MODULES = (
     "jwt",
     "cryptography",
     "mcp",
+    "apps.runtime_supervisor",
     "apps.local_agent.api",
     "apps.gateway.server",
     "apps.mcp_server.server",
