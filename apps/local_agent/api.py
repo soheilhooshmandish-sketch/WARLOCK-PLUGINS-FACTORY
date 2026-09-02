@@ -6,7 +6,14 @@ from pydantic import BaseModel
 from .audit import write_audit
 from .command_gateway import run_allowed
 from .config import AGENT_NAME, AGENT_VERSION, PROJECT_ROOT
-from .workspace_worker import list_files, read_file, write_file
+from .workspace_worker import (
+    delete_path,
+    list_files,
+    make_directory,
+    move_path,
+    read_file,
+    write_file,
+)
 
 
 app = FastAPI(
@@ -26,6 +33,11 @@ class PathRequest(BaseModel):
 class WriteFileRequest(BaseModel):
     path: str
     content: str
+
+
+class MovePathRequest(BaseModel):
+    source: str
+    destination: str
 
 
 def require_token(authorization: str | None) -> None:
@@ -196,4 +208,75 @@ def files_write(
         {"path": request.path},
     )
 
+    return result
+
+
+@app.post("/files/mkdir")
+def files_mkdir(
+    request: PathRequest,
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit("mkdir", "received", {"path": request.path})
+
+    try:
+        result = make_directory(request.path)
+    except PermissionError:
+        write_audit("mkdir", "denied", {"path": request.path})
+        raise HTTPException(status_code=403, detail="Path not allowed")
+
+    write_audit("mkdir", "success", {"path": request.path})
+    return result
+
+
+@app.post("/files/move")
+def files_move(
+    request: MovePathRequest,
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    details = {
+        "source": request.source,
+        "destination": request.destination,
+    }
+
+    write_audit("move", "received", details)
+
+    try:
+        result = move_path(
+            request.source,
+            request.destination,
+        )
+    except PermissionError:
+        write_audit("move", "denied", details)
+        raise HTTPException(status_code=403, detail="Path not allowed")
+    except FileNotFoundError:
+        write_audit("move", "failed", details)
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    write_audit("move", "success", details)
+    return result
+
+
+@app.post("/files/delete")
+def files_delete(
+    request: PathRequest,
+    authorization: str | None = Header(default=None),
+):
+    require_token(authorization)
+
+    write_audit("delete", "received", {"path": request.path})
+
+    try:
+        result = delete_path(request.path)
+    except PermissionError:
+        write_audit("delete", "denied", {"path": request.path})
+        raise HTTPException(status_code=403, detail="Path not allowed")
+    except FileNotFoundError:
+        write_audit("delete", "failed", {"path": request.path})
+        raise HTTPException(status_code=404, detail="Path not found")
+
+    write_audit("delete", "success", {"path": request.path})
     return result
