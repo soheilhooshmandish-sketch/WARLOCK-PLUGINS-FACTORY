@@ -15,11 +15,6 @@ mcp = FastMCP(
         "agent Permission Gate and audit log. Never use these tools as "
         "a substitute for unrestricted shell access."
     ),
-    host="127.0.0.1",
-    port=8790,
-    streamable_http_path="/mcp",
-    stateless_http=True,
-    json_response=True,
 )
 
 
