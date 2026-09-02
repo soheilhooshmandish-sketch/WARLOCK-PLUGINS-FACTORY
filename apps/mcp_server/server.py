@@ -3,6 +3,8 @@ from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 
 AGENT_URL = os.getenv("WARLOCK_AGENT_URL", "http://127.0.0.1:8765").rstrip("/")
@@ -21,6 +23,17 @@ mcp = FastMCP(
     stateless_http=True,
     json_response=True,
 )
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def runtime_health(_: Request) -> Response:
+    """Unauthenticated local-only liveness/identity endpoint for supervision."""
+    return JSONResponse(
+        {
+            "service": "warlock-mcp",
+            "status": "healthy",
+        }
+    )
 
 
 def _token() -> str:
