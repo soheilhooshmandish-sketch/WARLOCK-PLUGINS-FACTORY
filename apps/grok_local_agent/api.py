@@ -34,6 +34,7 @@ def require_token(authorization: str | None) -> None:
 
 @app.get("/health")
 def health():
+    key = (os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY") or "").strip()
     return {
         "agent": AGENT_NAME,
         "version": AGENT_VERSION,
@@ -41,6 +42,9 @@ def health():
         "port": AGENT_PORT,
         "original_agent_port": 8765,
         "role": "grok-only",
+        "xai_key_present": bool(key),
+        "xai_key_prefix": key[:4] if key else None,
+        "xai_key_length": len(key),
     }
 
 
@@ -121,8 +125,11 @@ def grok_chat_route(
     try:
         return grok_chat(request.message, request.model)
     except ValueError as exc:
+        print(f"GROK_CHAT_ERROR 400: {exc}")
         raise HTTPException(status_code=400, detail=str(exc))
     except GrokClientError as exc:
+        print(f"GROK_CHAT_ERROR 502: {exc}")
         raise HTTPException(status_code=502, detail=str(exc))
-    except Exception:
+    except Exception as exc:
+        print(f"GROK_CHAT_ERROR 500: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=500, detail="Grok request failed")
