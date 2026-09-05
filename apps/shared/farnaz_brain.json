@@ -1,12 +1,12 @@
 {
   "name": "Farnaz brain",
-  "version": "1.0",
+  "version": "1.1",
   "for": [
     "Warlock Grok agent 8766",
     "ChatGPT original agent 8765"
   ],
   "rule": "Shared knowledge. Do not rewrite apps/local_agent internals. ChatGPT may READ this file.",
-  "dsp_brain": "Thall DSP chain: HP(Low Cut+TIGHT) -> Tight shelf -> Body peak -> Drive -> tanh waveshaper(MORPH) -> Bite -> Air -> Gate -> Dry/Delay/Reverb -> Mix/Trim. Waveshape: modern tanh vs asymmetric tanh; MORPH blends; GAIN is squared into amount and drive. Oversample 4x default on the shaper only. ADAA is native-side: y=(F(xn)-F(xn-1))/dx, F=ln(cosh) for tanh. Combine ADAA+2x. Browser shaper cannot ADAA. Gate is sample-wise with hysteresis. SPACE is delay+convolver after the gate. Filters before the shaper.",
+  "dsp_brain": "Thall DSP chain: HP(Low Cut+TIGHT) -> Tight shelf -> Body peak -> Drive -> tanh waveshaper(MORPH) -> Bite -> Air -> Gate -> Delay/IR SPACE -> Mix/Trim. Filters before shaper. ADAA native only: y=(F(xn)-F(xn-1))/dx with relative eps, stable ln(cosh), denormal flush, MORPH=two ADAA blends. Cousin algebraic f=x/sqrt(1+x^2). Do not STFT-waveshape. SPACE is overlap-save / partitioned IR after gate. Mix energy in MIX_READY.md.",
   "cards": [
     {
       "id": "dsp-chain",
@@ -61,6 +61,42 @@
       "topic": "operator",
       "tags": "desktop vision mouse keyboard workflow permission see apps click type launch",
       "fact": "Farnaz Desktop Operator is default-deny. Caps: see, apps, click, type, launch, workflow. Grant with confirm=true. Loopback 127.0.0.1:8766 only. Does not touch apps/local_agent. Screenshot stays local. Type rejects secrets. Max 8 workflow steps."
+    },
+    {
+      "id": "dsp-adaa-stable",
+      "topic": "dsp",
+      "tags": "adaa numerical stability ln cosh eps denormal morph",
+      "fact": "ADAA stability: eps = 1e-6*(1+|x|+|x1|); if |dx|<eps use 0.5*(f(x)+f(x1)). Stable F_tanh = |x|+log1p(exp(-2|x|))-ln(2). Asym tanh(a x) has F=ln_cosh(a x)/a with a clamped. MORPH blends two ADAA outputs, not two f then one F. Denormal x1->0. Non-finite -> 0 and reset. NUMERICAL_SAFETY is NOT_RUN until tests. Factory Test has no ADAA yet."
+    },
+    {
+      "id": "dsp-clip-alts",
+      "topic": "dsp",
+      "tags": "tanh algebraic atan cubic cousin waveshape eco",
+      "fact": "Clip families: tanh+ln_cosh = THALL default. Cousin x/sqrt(1+x^2), F=sqrt(1+x^2) = ECO. x/(1+|x|) utility not brand. atan darker/more CPU. cubic simple Factory not MORPH. Symmetric=odd, asymmetric scale=even. Switching family requires GAIN^2 recalibrate and golden approve. Do not silently replace tanh."
+    },
+    {
+      "id": "dsp-freq",
+      "topic": "dsp",
+      "tags": "fft stft frequency domain iir fir latency",
+      "fact": "Time domain: tanh ADAA gate IIR filters. Frequency domain: partitioned IR and offline Audio Lab FFT. Never waveshape inside STFT. Oversampling is still time (upsample-ADAA-downsample). Live guitar: min-phase IIR. Linear-phase FIR/STFT must report latency. Analysis FFT is not the plugin run()."
+    },
+    {
+      "id": "dsp-overlap-save",
+      "topic": "dsp",
+      "tags": "overlap-save ols convolution fft circular wrap",
+      "fact": "Overlap-save: FFT multiply is circular. IR length M, FFT N>=2M. Prefix previous M-1 samples, FFT, multiply H(f), IFFT, DISCARD first M-1 (wrap), keep next L. That is linear convolution. Hop L. Overlap-add keeps tails instead. WARLOCK SPACE uses overlap-save / uniform partition, not one huge FFT per host buffer."
+    },
+    {
+      "id": "dsp-ir",
+      "topic": "dsp",
+      "tags": "ir convolution partitioned space license latency cab hall",
+      "fact": "SPACE IR sits after gate. Partition 1 small (64-256) sets latency; later partitions cheap tail. Precompute H(f) off-thread. No fopen/malloc in run(). IR swap atomic or crossfade. Check isfinite and DC on load. Report first-partition latency. Cab IR is not hall IR. Unknown license = REVIEW_REQUIRED. Do not ship proprietary IR in the VST. FFmpeg/librosa are offline only."
+    },
+    {
+      "id": "mix-energy",
+      "topic": "mix",
+      "tags": "mix-ready energy frost sludge chainsaw sag hiss death stoner black doom",
+      "fact": "Genre is energy+mix slot on the same THALL chain. Axes: attack density frost sludge chainsaw sag hiss sustain. Banks: THALL DJENT DOOM BLACK_METAL DEATH_METAL DEATH_HM2 STONER CLEAN_AMBIENT MODERN_METAL. MASTER is mix trim, GAIN is saturation. A/B after loudness match. Details: apps/shared/MIX_READY.md and presets.json."
     }
   ],
   "sources": [
@@ -78,6 +114,11 @@
       "topic": "dsp",
       "title": "Chowdhury ADAA notes",
       "url": "https://ccrma.stanford.edu/~jatin/Notebooks/adaa.html"
+    },
+    {
+      "topic": "dsp",
+      "title": "Overlap-save linear convolution via FFT (standard DSP)",
+      "url": "https://en.wikipedia.org/wiki/Overlap%E2%80%93save_method"
     }
   ]
 }

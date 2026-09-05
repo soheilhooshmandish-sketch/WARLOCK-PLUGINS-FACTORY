@@ -7,7 +7,7 @@ JSON: `apps/shared/farnaz_brain.json`
 
 ## How ChatGPT uses it
 
-Read `apps/shared/farnaz_brain.json` (or this markdown) before answering DSP, Thall, oversample, ADAA, gate, or lab layout questions.
+Read `apps/shared/farnaz_brain.json` (or this markdown) before answering DSP, Thall, oversample, ADAA, gate, space/IR, frequency-domain, or lab layout questions.
 
 ## DSP chain
 
@@ -37,6 +37,28 @@ If `|dx| < eps` use `f(x)`.
 tanh: `F = ln(cosh)`. Cheap cousin: `f = x/sqrt(1+x^2)`, `F = sqrt(1+x^2)`.
 Best with **ADAA + 2x** oversample. Adds 1 sample delay.
 
+### ADAA numerical stability (native)
+
+- `eps` relative: `1e-6 * (1+|x|+|x1|)`. Never divide by raw 0.
+- If `|dx| < eps` use `0.5*(f(x)+f(x1))`.
+- Stable `ln(cosh x) = |x| + log1p(exp(-2|x|)) - ln(2)`. Raw `log(cosh)` overflows.
+- Asymmetric branch: `f=tanh(a x)` → `F=ln_cosh(a x)/a`. Clamp `a`.
+- MORPH = two ADAA results blended, not two `f` then one `F`.
+- Denormal: if `|x1| < 1e-30` set 0. Non-finite sample → 0 and reset state.
+- `NUMERICAL_SAFETY` stays NOT_RUN until tests exist. Factory Test has tanh + isfinite only, no ADAA yet.
+
+### Alternative clips (do not silently replace tanh)
+
+| f | F | use |
+|---|---|---|
+| tanh | ln_cosh | THALL default |
+| x/√(1+x²) | √(1+x²) | ECO cousin |
+| x/(1+|x|) | |x|-ln(1+|x|) | utility, not brand |
+| atan (scaled) | x atan x − ½ ln(1+x²) | darker, more CPU |
+| cubic | piecewise polynomial | simple Factory, not MORPH |
+
+Symmetric → odd. Asymmetric scale → even. Recalibrate GAIN² and approve golden if you switch family.
+
 https://dafx16.vutbr.cz/dafxpapers/20-DAFx-16_paper_41-PN.pdf
 https://vicanek.de/articles/AADistortion.pdf
 
@@ -47,6 +69,40 @@ Sample-wise worklet: peak magnitude, exp envelope (~1.5 ms attack, 55-185 ms rel
 ## Space
 
 Delay `75ms + MORPH*280ms`. Reverb wet `SPACE^1.4 * 0.34`. MORPH tints shaper **and** stretches delay.
+
+SPACE = delay then optional **partitioned convolution IR after the gate**. Never IR before the shaper.
+
+### Frequency domain vs time
+
+- Time: tanh, ADAA, gate, IIR LOW CUT / TIGHT / BODY / BITE / AIR.
+- Frequency: partitioned IR, Audio Lab analysis (offline).
+- Do not waveshape inside STFT. Oversample is still time-domain (upsample → ADAA → downsample).
+- IIR minimum-phase for live guitar. Linear-phase FIR/STFT must report latency.
+
+### Overlap-save (linear convolution via FFT)
+
+Circular FFT multiply wraps. Overlap-save prevents wrap:
+
+1. IR length M. FFT size N ≥ 2M (typically next pow2, N ≥ L+M-1).
+2. Keep last M-1 samples from previous block as prefix.
+3. FFT the window of N samples, multiply by precomputed H(f), IFFT.
+4. **Discard the first M-1 samples** (aliased). Keep the next L samples. That is the linear result.
+5. Advance input by L. Latency of one-shot OLS = hop L (plus host buffer).
+
+Overlap-add instead keeps tails and adds them. Same linear result if hop/window are consistent. WARLOCK SPACE prefers overlap-save / uniform-partition for IR.
+
+### Partitioned IR (realtime)
+
+Long IR cannot be one FFT per buffer. Split h into partitions:
+
+- First partition small (64–256) → low latency, more CPU.
+- Later partitions larger → cheap tail.
+- Precompute H_k(f) off-thread. No fopen/malloc in `run()`.
+- IR swap: atomic pointer or crossfade. NaN/DC-check IR on load.
+- Report latency = first partition. Do not claim 0 ms.
+- Unknown IR license = REVIEW_REQUIRED. Do not ship proprietary IR inside the VST.
+
+Cab IR ≠ hall IR. Cab fights AIR/BITE; hall is SPACE.
 
 ## Lab UI
 
