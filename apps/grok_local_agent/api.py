@@ -80,14 +80,7 @@ def _file_http_error(exc: Exception) -> None:
     raise HTTPException(status_code=500, detail="File operation failed") from exc
 
 
-@app.get("/")
-def ui():
-    page = Path(STATIC_DIR) / "index.html"
-    return FileResponse(page)
-
-
-@app.get("/health")
-def health():
+def health_payload():
     key = (os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY") or "").strip()
     return {
         "agent": AGENT_NAME,
@@ -101,6 +94,22 @@ def health():
         "xai_key_prefix": key[:4] if key else None,
         "xai_key_length": len(key),
     }
+
+
+@app.get("/")
+def root():
+    return health_payload()
+
+
+@app.get("/ui")
+def ui():
+    page = Path(STATIC_DIR) / "index.html"
+    return FileResponse(page)
+
+
+@app.get("/health")
+def health():
+    return health_payload()
 
 
 @app.get("/workspace")
