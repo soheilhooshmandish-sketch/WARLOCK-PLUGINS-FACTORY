@@ -2,13 +2,13 @@ from datetime import datetime, timezone
 import json
 import re
 
+from .ast_summary import summarize_python
 from .config import AGENT_NAME, AGENT_VERSION, STATE_DIR
+from .knowledge import FACTS
+from .planner import auto_context
 from . import tools as T
 
-HELP = f"""{AGENT_NAME} {AGENT_VERSION}
-ایجنت محلی هوشمند. ChatGPT / apps/local_agent قفل است.
-دستورها: کمک، کی هستی، خلاصه، فهرست، بخوان، جستجو، پیدا کن متن، یادداشت، یادداشت‌ها، git، ایندکس
-"""
+HELP = FACTS + "\nکمک | کی هستی | خلاصه | ایندکس | فهرست | بخوان | جستجو | پیدا کن متن | یادداشت | git"
 
 
 def _n(s: str) -> str:
@@ -46,7 +46,7 @@ def reply(message: str) -> dict:
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", HELP)
     if _has(key, "کی هستی", "who are you", "اسمت", "سلامت", "health"):
-        add("id", f"من {AGENT_NAME} هستم، نسخه {AGENT_VERSION}. ایجنت محلی. اصلی روی 8765 را تغییر نمی‌دهم.")
+        add("id", f"من {AGENT_NAME} هستم، نسخه {AGENT_VERSION}. قفل: ایجنت اصلی 8765.")
     if _has(key, "ایندکس", "index", "ساختار"):
         add("index", T.index_top())
     if _has(key, "خلاصه", "overview", "وضعیت پروژه") and not _has(key, "خلاصه فایل"):
@@ -72,8 +72,9 @@ def reply(message: str) -> dict:
     elif _has(key, "جستجو", "find", "search", "پیدا"):
         q = re.sub(r"^(جستجو|find|search|پیدا کن)\s+", "", text, flags=re.I).strip() or "farnaz"
         add("find", T.search_names(q))
-    if _has(key, "خلاصه فایل", "summarize"):
-        add("sum", T.summarize(path or "apps/grok_local_agent/brain.py"))
+    if _has(key, "خلاصه فایل", "summarize", "ast"):
+        target = path or "apps/grok_local_agent/brain.py"
+        add("ast", summarize_python(target) if target.endswith(".py") else T.summarize(target))
     if _has(key, "git status", "وضعیت گیت") or key == "git":
         try:
             add("git", T.git_info("status"))
@@ -97,12 +98,13 @@ def reply(message: str) -> dict:
         add("ws", T.runtime())
 
     if not out:
+        add("plan", auto_context(text))
         if path and not T.protected(path):
             target = T.PROJECT_ROOT / path
             if target.exists():
-                add("auto", T.list_dir(path) if target.is_dir() else T.summarize(path))
-        if not out:
-            add("reason", HELP + "\n\n" + T.search_names(key.split()[0] if key else "farnaz"))
+                add("auto", T.list_dir(path) if target.is_dir() else (
+                    summarize_python(path) if path.endswith(".py") else T.summarize(path)
+                ))
 
     content = "\n\n".join(out)
     try:
@@ -110,7 +112,7 @@ def reply(message: str) -> dict:
     except Exception:
         pass
     return {
-        "model": "farnaz-v0.8-offline",
+        "model": "farnaz-v0.9-offline",
         "mode": "offline",
         "agent": AGENT_NAME,
         "version": AGENT_VERSION,
