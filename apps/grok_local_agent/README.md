@@ -13,13 +13,18 @@ Do not edit `apps/local_agent` when changing this service.
 
 `WARLOCK_GROK_OFFLINE` defaults to `1`. `/grok/chat` then returns a local stub and does not call `api.x.ai`.
 
-Live API:
+## File tools
 
-```powershell
-[Environment]::SetEnvironmentVariable("WARLOCK_GROK_OFFLINE", "0", "User")
-```
+Same workspace gate as the original agent:
 
-Requires a real key from https://console.x.ai starting with `xai-` plus API credits. Creating a key is free; usage is prepaid.
+- `POST /files/list`
+- `POST /files/read`
+- `POST /files/write`
+- `POST /files/mkdir`
+- `POST /files/move`
+- `POST /files/delete`
+
+Console logs look like `GROK POST /files/write -> 200 (12ms)` plus `FILE write path=...`.
 
 ## Start
 

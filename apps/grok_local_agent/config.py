@@ -3,7 +3,7 @@ import os
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 AGENT_NAME = "Warlock Grok Agent"
-AGENT_VERSION = "0.3.2"
+AGENT_VERSION = "0.3.3"
 AGENT_HOST = "127.0.0.1"
 AGENT_PORT = 8766
 
