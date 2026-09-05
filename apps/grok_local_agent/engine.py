@@ -15,6 +15,7 @@ from .recall import last as recall_last
 from .selector import run_selector
 from .selfmap import api_routes
 from .sources import list_sources
+from .windows import route as windows_route
 
 
 def _has(key: str, *words: str) -> bool:
@@ -61,6 +62,13 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", lambda: FACTS)
+    if _has(
+        key,
+        "ویندوز", "windows", "clipboard", "screenshot", "process", "پروسس",
+        "notepad", "دیسک", "کلیپ", "اسکرین", "سیستم", "whoami", "notify",
+        "نوتیف", "باز کن", "calc", "explorer", "tasklist",
+    ):
+        add("windows", lambda: windows_route(text))
     brain_keys = (
         "interrupt", "checkpointer", "reducer", "add_messages", "selector",
         "candidate", "hitl", "crewai", "langgraph", "autogen", "oversight",
