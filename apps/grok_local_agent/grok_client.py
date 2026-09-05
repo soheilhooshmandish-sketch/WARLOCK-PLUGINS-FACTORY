@@ -10,7 +10,8 @@ class GrokClientError(RuntimeError):
 
 
 def _api_key() -> str:
-    key = os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY")
+    key = os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY") or ""
+    key = key.strip().strip('"').strip("'")
     if not key:
         raise GrokClientError("XAI_API_KEY is not configured")
     return key
@@ -27,8 +28,7 @@ def chat(message: str, model: str | None = None) -> dict:
                 "role": "system",
                 "content": (
                     "You are the Warlock Grok Agent. "
-                    "Do not modify the original ChatGPT local agent. "
-                    "Stay inside the Warlock Plugins Factory workspace."
+                    "Do not modify the original ChatGPT local agent."
                 ),
             },
             {"role": "user", "content": message.strip()},
@@ -45,10 +45,9 @@ def chat(message: str, model: str | None = None) -> dict:
         timeout=60,
     )
 
+    text = response.text[:400].replace(_api_key(), "[redacted]")
     if response.status_code >= 400:
-        raise GrokClientError(
-            f"Grok API error {response.status_code}: {response.text[:500]}"
-        )
+        raise GrokClientError(f"Grok API {response.status_code}: {text}")
 
     data = response.json()
     choices = data.get("choices") or []
