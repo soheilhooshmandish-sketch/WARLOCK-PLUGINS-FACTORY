@@ -2,10 +2,12 @@ from pathlib import Path
 import re
 
 from . import inspect_self as S
+from . import stats as ST
 from . import tools as T
 from .ast_summary import summarize_python
 from .config import MAX_REASON_STEPS, PROJECT_ROOT, SKIP_DIRS
 from .knowledge import FACTS
+from .recall import last as recall_last
 from .selfmap import api_routes
 
 
@@ -56,6 +58,7 @@ def plan(text: str) -> list[tuple[str, callable]]:
     if _has(key, "کی هستی", "who are you", "اسمت", "سلامت", "health"):
         add("id", lambda: FACTS)
         add("syntax", S.syntax)
+        add("lock", ST.lock_ok)
     if _has(key, "ماژول", "module", "inventory", "خودت"):
         add("inventory", S.inventory)
         add("syntax", S.syntax)
@@ -66,11 +69,20 @@ def plan(text: str) -> list[tuple[str, callable]]:
         add("routes", api_routes)
     if _has(key, "ایندکس", "index", "ساختار"):
         add("index", T.index_top)
+        add("types", ST.file_types)
+    if _has(key, "آمار", "stats", "types"):
+        add("types", ST.file_types)
+        add("count", count_py)
+    if _has(key, "قفل", "lock", "chatgpt"):
+        add("lock", ST.lock_ok)
+    if _has(key, "یادآوری", "recall", "قبلی"):
+        add("recall", lambda: recall_last(5))
     if _has(key, "خلاصه", "overview", "وضعیت") and not _has(key, "خلاصه فایل"):
         add("runtime", T.runtime)
         add("list-self", lambda: T.list_dir("apps/grok_local_agent"))
         add("count", count_py)
         add("syntax", S.syntax)
+        add("lock", ST.lock_ok)
     if _has(key, "یادداشت‌ها", "notes"):
         add("notes", T.note_read)
     elif _has(key, "یادداشت", "note ") and len(text) > 6:
@@ -105,9 +117,11 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if not steps:
         add("facts", lambda: FACTS)
+        add("lock", ST.lock_ok)
         add("syntax", S.syntax)
         add("inventory", S.inventory)
         add("index", T.index_top)
+        add("recall", lambda: recall_last(3))
         words = [w for w in key.split() if len(w) > 3][:3]
         if words:
             add("find", lambda: T.search_names(words[0]))
