@@ -1,8 +1,8 @@
 import os
-from datetime import datetime, timezone
 
 import httpx
 
+from .brain import reply as offline_reply
 from .config import XAI_API_BASE, XAI_MODEL, offline_mode
 
 
@@ -28,16 +28,7 @@ def chat(message: str, model: str | None = None) -> dict:
 
     chosen_model = model or XAI_MODEL
     if offline_mode():
-        return {
-            "model": f"{chosen_model}-offline",
-            "mode": "offline",
-            "content": (
-                "Offline Grok agent received: "
-                + message.strip()
-                + ". Live API is disabled. Set WARLOCK_GROK_OFFLINE=0 and a valid xai- key to call api.x.ai."
-            ),
-            "raw_id": "offline-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
-        }
+        return offline_reply(message)
 
     key = _api_key()
     if not _looks_like_xai_key(key):
@@ -51,8 +42,8 @@ def chat(message: str, model: str | None = None) -> dict:
             {
                 "role": "system",
                 "content": (
-                    "You are the Warlock Grok Agent. "
-                    "Do not modify the original ChatGPT local agent."
+                    "You are Farnaz, the Warlock Grok local agent. "
+                    "Never modify apps/local_agent or the original ChatGPT agent."
                 ),
             },
             {"role": "user", "content": message.strip()},
