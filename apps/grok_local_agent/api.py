@@ -1,7 +1,9 @@
 import os
 import time
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -15,7 +17,7 @@ from apps.local_agent.workspace_worker import (
     write_file,
 )
 
-from .config import AGENT_NAME, AGENT_PORT, AGENT_VERSION, PROJECT_ROOT, offline_mode
+from .config import AGENT_NAME, AGENT_PORT, AGENT_VERSION, PROJECT_ROOT, STATIC_DIR, offline_mode
 from .grok_client import GrokClientError, chat as grok_chat
 
 
@@ -76,6 +78,12 @@ def _file_http_error(exc: Exception) -> None:
     if isinstance(exc, IsADirectoryError):
         raise HTTPException(status_code=400, detail="Path is a directory") from exc
     raise HTTPException(status_code=500, detail="File operation failed") from exc
+
+
+@app.get("/")
+def ui():
+    page = Path(STATIC_DIR) / "index.html"
+    return FileResponse(page)
 
 
 @app.get("/health")
