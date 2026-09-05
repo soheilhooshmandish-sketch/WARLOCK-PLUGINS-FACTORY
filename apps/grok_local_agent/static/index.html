@@ -1,198 +1,229 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Warlock Grok Agent</title>
+  <title>Warlock Plugins Factory</title>
   <style>
     :root {
-      --bg: #070708;
-      --panel: #121114;
-      --line: #2a2420;
-      --gold: #c4a574;
-      --blood: #8a1f24;
-      --ivory: #e8dfd0;
-      --mute: #8b8174;
-      --ok: #6fbf73;
+      --void: #050506;
+      --panel: #0d0d10;
+      --raised: #141418;
+      --line: #2b241c;
+      --gold: #c9a36a;
+      --gold-dim: #8d6e3e;
+      --blood: #7a161b;
+      --ivory: #ece4d6;
+      --mute: #8a8175;
+      --ok: #7dba7a;
     }
     * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Segoe UI", Tahoma, sans-serif;
-      background:
-        radial-gradient(1200px 500px at 80% -10%, #2a1214 0%, transparent 55%),
-        var(--bg);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      background: var(--void);
       color: var(--ivory);
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: 64px 1fr;
     }
-    header {
+    .mark {
+      grid-column: 1;
+      grid-row: 1;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 18px 24px;
+      gap: 12px;
+      padding: 0 18px;
+      border-right: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
-      background: rgba(10, 10, 12, 0.9);
-    }
-    h1 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
+      background: var(--panel);
+      letter-spacing: 0.22em;
+      font-size: 11px;
       color: var(--gold);
     }
-    .sub { color: var(--mute); font-size: 12px; margin-top: 4px; }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border: 1px solid var(--line);
-      padding: 6px 12px;
-      border-radius: 999px;
-      font-size: 12px;
-      color: var(--mute);
+    .mark b { font-size: 18px; color: var(--ivory); letter-spacing: 0.08em; }
+    .seal {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid var(--gold);
+      display: grid; place-items: center;
+      color: var(--gold); font-size: 12px;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blood); }
-    .dot.ok { background: var(--ok); }
-    main {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      min-height: calc(100vh - 74px);
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 22px; border-bottom: 1px solid var(--line); background: var(--panel);
     }
-    aside, section {
-      padding: 20px;
+    header h1 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+    nav {
+      grid-row: 2; border-right: 1px solid var(--line); background: var(--panel); padding: 16px 10px;
     }
-    aside {
-      border-left: 1px solid var(--line);
-      background: var(--panel);
+    nav button {
+      width: 100%; text-align: left; background: transparent; color: var(--mute);
+      border: 0; padding: 11px 12px; margin: 0 0 4px; cursor: pointer; font: inherit; letter-spacing: 0.08em;
     }
-    label { display: block; font-size: 11px; color: var(--gold); margin: 12px 0 6px; }
-    input, textarea, button {
-      width: 100%;
-      font: inherit;
-      color: var(--ivory);
-      background: #0c0c0e;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+    nav button.on, nav button:hover { color: var(--gold); background: var(--raised); }
+    main { padding: 22px; overflow: auto; }
+    .chips { display: flex; gap: 8px; }
+    .chip { font-size: 11px; border: 1px solid var(--line); padding: 5px 10px; border-radius: 999px; color: var(--mute); }
+    .chip.ok { color: var(--ok); border-color: #2d4a2c; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0 22px; }
+    .card {
+      background: var(--raised); border: 1px solid var(--line); padding: 16px 18px; min-height: 110px;
     }
-    input, textarea { padding: 10px 12px; }
-    button {
-      cursor: pointer;
-      padding: 10px 12px;
-      background: linear-gradient(#9a2a2e, var(--blood));
-      border-color: #5c1619;
-      margin-top: 10px;
+    .card h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.16em; color: var(--gold-dim); text-transform: uppercase; }
+    .card p { margin: 0; font-size: 18px; }
+    .card small { color: var(--mute); display: block; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+    th { color: var(--gold-dim); font-size: 11px; letter-spacing: 0.12em; }
+    input, textarea {
+      width: 100%; background: #09090b; color: var(--ivory); border: 1px solid var(--line);
+      padding: 10px; font: inherit;
     }
-    button.ghost { background: transparent; color: var(--gold); border-color: var(--gold); }
-    #log {
-      height: calc(100vh - 240px);
-      overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 16px;
-      background: #0b0b0d;
+    .row { display: flex; gap: 8px; margin: 10px 0; }
+    .btn {
+      background: var(--blood); border: 1px solid #4c0e12; color: var(--ivory);
+      padding: 10px 14px; cursor: pointer; letter-spacing: 0.08em; font: inherit;
     }
-    .msg { margin: 0 0 14px; line-height: 1.55; white-space: pre-wrap; }
-    .msg.user { color: var(--gold); }
-    .msg.agent { color: var(--ivory); }
-    .msg.err { color: #e07070; }
-    #composer { display: flex; gap: 8px; margin-top: 12px; }
-    #composer textarea { min-height: 64px; resize: vertical; }
-    #composer button { width: 120px; margin: 0; }
-    #files { font-size: 12px; color: var(--mute); max-height: 220px; overflow: auto; }
-    @media (max-width: 800px) {
-      main { grid-template-columns: 1fr; }
-      aside { border-left: 0; border-top: 1px solid var(--line); }
+    .btn.ghost { background: transparent; color: var(--gold); border-color: var(--gold-dim); }
+    pre {
+      background: #09090b; border: 1px solid var(--line); padding: 12px; min-height: 180px;
+      overflow: auto; color: var(--mute); white-space: pre-wrap;
+    }
+    .hidden { display: none; }
+    @media (max-width: 900px) {
+      body { grid-template-columns: 1fr; grid-template-rows: 56px auto 1fr; }
+      nav { grid-row: auto; display: flex; overflow: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+  <div class="mark"><span class="seal">W</span><div><b>WARLOCK</b><br>PLUGINS FACTORY</div></div>
   <header>
-    <div>
-      <h1>Warlock Grok</h1>
-      <div class="sub">ایجنت محلی ۸۷۶۶ — ایجنت اصلی ChatGPT دست‌نخورده است</div>
+    <h1>Company console</h1>
+    <div class="chips">
+      <span class="chip ok" id="healthChip">…</span>
+      <span class="chip">Grok :8766</span>
+      <span class="chip">Original :8765</span>
     </div>
-    <div class="badge"><span class="dot" id="dot"></span><span id="status">در حال اتصال…</span></div>
   </header>
+  <nav>
+    <button class="on" data-view="overview">Overview</button>
+    <button data-view="files">Workspace</button>
+    <button data-view="git">Git</button>
+    <button data-view="console">Agent console</button>
+    <button data-view="access">Access</button>
+  </nav>
   <main>
-    <aside>
-      <label>توکن ایجنت</label>
-      <input id="token" type="password" placeholder="WARLOCK_AGENT_TOKEN" />
-      <button class="ghost" id="save">ذخیره در این نشست</button>
-      <label>مسیر فایل</label>
-      <input id="path" value="apps/grok_local_agent" />
-      <button class="ghost" id="list">فهرست فایل</button>
-      <div id="files"></div>
-    </aside>
-    <section>
-      <div id="log"></div>
-      <div id="composer">
-        <textarea id="msg" placeholder="پیام آفلاین…"></textarea>
-        <button id="send">ارسال</button>
+    <div id="overview">
+      <div class="grid">
+        <div class="card"><h3>Grok agent</h3><p id="v">—</p><small id="mode">offline / live</small></div>
+        <div class="card"><h3>Original agent</h3><p>Port 8765</p><small>ChatGPT service — not modified</small></div>
+        <div class="card"><h3>Factory role</h3><p>Grok-only</p><small>Local control plane</small></div>
       </div>
-    </section>
+      <table>
+        <thead><tr><th>Service</th><th>Port</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Warlock Local Agent</td><td>8765</td><td>Original ChatGPT agent</td></tr>
+          <tr><td>Warlock Grok Agent</td><td>8766</td><td>Grok + company console</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="files" class="hidden">
+      <div class="row">
+        <input id="path" value="apps/grok_local_agent" />
+        <button class="btn" id="listBtn">List</button>
+        <button class="btn ghost" id="readBtn">Read</button>
+      </div>
+      <pre id="fileOut">Workspace listing uses the same permission gate as the original agent.</pre>
+    </div>
+
+    <div id="git" class="hidden">
+      <div class="row">
+        <button class="btn" id="stBtn">Status</button>
+        <button class="btn ghost" id="brBtn">Branch</button>
+        <button class="btn ghost" id="dfBtn">Diff</button>
+      </div>
+      <pre id="gitOut"></pre>
+    </div>
+
+    <div id="console" class="hidden">
+      <p class="chip">Not a public messenger. Internal operator console only.</p>
+      <div class="row"><textarea id="msg" rows="3" placeholder="Operator note / offline ping"></textarea></div>
+      <button class="btn" id="sendBtn">Dispatch</button>
+      <pre id="conOut"></pre>
+    </div>
+
+    <div id="access" class="hidden">
+      <p>Paste the local agent token. It stays in this browser session only.</p>
+      <div class="row">
+        <input id="token" type="password" placeholder="WARLOCK_AGENT_TOKEN" />
+        <button class="btn" id="saveBtn">Save session</button>
+      </div>
+    </div>
   </main>
   <script>
+    const views = ["overview","files","git","console","access"];
+    document.querySelectorAll("nav button").forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll("nav button").forEach(b => b.classList.remove("on"));
+        btn.classList.add("on");
+        views.forEach(v => document.getElementById(v).classList.toggle("hidden", v !== btn.dataset.view));
+      };
+    });
     const tokenEl = document.getElementById("token");
-    const logEl = document.getElementById("log");
-    const filesEl = document.getElementById("files");
     tokenEl.value = sessionStorage.getItem("grok_agent_token") || "";
-
-    function add(cls, text) {
-      const p = document.createElement("p");
-      p.className = "msg " + cls;
-      p.textContent = text;
-      logEl.appendChild(p);
-      logEl.scrollTop = logEl.scrollHeight;
-    }
-
     function headers() {
-      const tok = tokenEl.value.trim();
-      return tok ? { "Authorization": "Bearer " + tok, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+      const t = tokenEl.value.trim();
+      const h = { "Content-Type": "application/json" };
+      if (t) h.Authorization = "Bearer " + t;
+      return h;
     }
-
-    async function refreshHealth() {
+    async function j(url, opt) {
+      const r = await fetch(url, opt);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.detail || r.status);
+      return d;
+    }
+    async function health() {
       try {
-        const r = await fetch("/health");
-        const d = await r.json();
-        document.getElementById("dot").className = "dot ok";
-        document.getElementById("status").textContent =
-          d.version + " · " + (d.offline ? "offline" : "live") + " · " + d.status;
+        const d = await j("/health");
+        document.getElementById("healthChip").textContent = d.version + " · " + (d.offline ? "offline" : "live") + " · " + d.status;
+        document.getElementById("v").textContent = d.version;
+        document.getElementById("mode").textContent = d.offline ? "Offline factory mode" : "Live API";
       } catch {
-        document.getElementById("dot").className = "dot";
-        document.getElementById("status").textContent = "قطع";
+        document.getElementById("healthChip").textContent = "offline console";
       }
     }
-
-    document.getElementById("save").onclick = () => {
+    document.getElementById("saveBtn").onclick = () => {
       sessionStorage.setItem("grok_agent_token", tokenEl.value.trim());
-      add("agent", "توکن در این نشست ذخیره شد.");
     };
-
-    document.getElementById("list").onclick = async () => {
+    document.getElementById("listBtn").onclick = async () => {
       const path = document.getElementById("path").value.trim() || ".";
-      const r = await fetch("/files/list", { method: "POST", headers: headers(), body: JSON.stringify({ path }) });
-      const d = await r.json();
-      if (!r.ok) { add("err", d.detail || "list failed"); return; }
-      filesEl.textContent = (d.files || []).join("\n");
+      const d = await j("/files/list", { method: "POST", headers: headers(), body: JSON.stringify({ path }) });
+      document.getElementById("fileOut").textContent = (d.files || []).join("\n");
     };
-
-    async function send() {
+    document.getElementById("readBtn").onclick = async () => {
+      const path = document.getElementById("path").value.trim();
+      const d = await j("/files/read", { method: "POST", headers: headers(), body: JSON.stringify({ path }) });
+      document.getElementById("fileOut").textContent = d.content || "";
+    };
+    async function git(which) {
+      const d = await j("/git/" + which, { headers: headers() });
+      document.getElementById("gitOut").textContent = d.output || JSON.stringify(d, null, 2);
+    }
+    document.getElementById("stBtn").onclick = () => git("status");
+    document.getElementById("brBtn").onclick = () => git("branch");
+    document.getElementById("dfBtn").onclick = () => git("diff");
+    document.getElementById("sendBtn").onclick = async () => {
       const message = document.getElementById("msg").value.trim();
       if (!message) return;
-      add("user", message);
-      document.getElementById("msg").value = "";
-      const r = await fetch("/grok/chat", { method: "POST", headers: headers(), body: JSON.stringify({ message }) });
-      const d = await r.json();
-      if (!r.ok) { add("err", typeof d.detail === "string" ? d.detail : JSON.stringify(d.detail)); return; }
-      add("agent", (d.mode ? "[" + d.mode + "] " : "") + (d.content || ""));
-    }
-    document.getElementById("send").onclick = send;
-    document.getElementById("msg").addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
-    });
-    refreshHealth();
-    setInterval(refreshHealth, 8000);
+      const d = await j("/grok/chat", { method: "POST", headers: headers(), body: JSON.stringify({ message }) });
+      document.getElementById("conOut").textContent = (d.mode || "") + "\n" + (d.content || "");
+    };
+    health();
+    setInterval(health, 8000);
   </script>
 </body>
 </html>
