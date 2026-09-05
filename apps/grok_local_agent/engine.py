@@ -7,6 +7,8 @@ from . import tools as T
 from .ast_summary import summarize_python
 from .config import MAX_REASON_STEPS, PROJECT_ROOT, SKIP_DIRS
 from .knowledge import FACTS
+from .orchestrator import conductor
+from .peers import fleet
 from .recall import last as recall_last
 from .selfmap import api_routes
 
@@ -55,6 +57,10 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", lambda: FACTS)
+    if _has(key, "ارکستر", "orchestrat", "fleet", "چند ایجنت", "multi-agent", "agents"):
+        add("orchestrate", lambda: conductor(text))
+    if _has(key, "ناوگان", "peer", "8765", "8766"):
+        add("fleet", fleet)
     if _has(key, "کی هستی", "who are you", "اسمت", "سلامت", "health"):
         add("id", lambda: FACTS)
         add("syntax", S.syntax)
