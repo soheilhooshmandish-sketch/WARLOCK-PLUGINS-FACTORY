@@ -99,7 +99,8 @@ TTS is local-first (SAPI / espeak / pyttsx3). Browser speech is fallback.
 Farnaz Local Brain → free tools → DSP engine → JUCE → VST3.
 
 Paid APIs are optional. Preset banks live in `apps/shared/presets.json`:
-THALL, DJENT, DOOM, BLACK_METAL, CLEAN_AMBIENT, MODERN_METAL.
-Each bank has DSP targets, frequency ranges, gate behavior, gain structure, oversampling, baseline.
+THALL, DJENT, DOOM, BLACK_METAL, DEATH_METAL, DEATH_HM2, STONER, CLEAN_AMBIENT, MODERN_METAL.
+Each bank has DSP targets, energy vector (attack/density/frost/sludge/chainsaw/sag/hiss/sustain), and mix slot.
+Mix law: `apps/shared/MIX_READY.md`. Parameter IDs stay stable. Loudness is not energy.
 Memory is SQLite. Backup is Git. Permission is the operator grant layer.
 

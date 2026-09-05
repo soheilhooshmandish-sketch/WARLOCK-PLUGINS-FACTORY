@@ -5,7 +5,11 @@ import json
 from pathlib import Path
 
 PRESET_PATH = Path(__file__).resolve().parents[1] / "shared" / "presets.json"
-NAMES = ("THALL", "DJENT", "DOOM", "BLACK_METAL", "CLEAN_AMBIENT", "MODERN_METAL")
+NAMES = (
+    "THALL", "DJENT", "DOOM", "BLACK_METAL",
+    "DEATH_METAL", "DEATH_HM2", "STONER",
+    "CLEAN_AMBIENT", "MODERN_METAL",
+)
 
 
 def load() -> dict:
@@ -29,7 +33,7 @@ def cards() -> list[dict]:
             f"GAIN {bank.get('gain')} MORPH {bank.get('morph')} "
             f"BITE {bank.get('bite')}@{bank.get('bite_freq_hz')}Hz "
             f"AIR {bank.get('air')} GATE {bank.get('gate')} SPACE {bank.get('space')} "
-            f"OS {bank.get('oversample')}. {bank.get('target')}. "
+            f"OS {bank.get('oversample')}. energy={bank.get('energy')}. {bank.get('target')}. "
             f"Gate: {bank.get('gate_behavior')}. {bank.get('gain_structure')}."
         )
         out.append({"id": "preset-" + name.lower(), "topic": "preset", "tags": tags, "fact": fact})
@@ -38,7 +42,14 @@ def cards() -> list[dict]:
 
 def get(name: str) -> dict | None:
     key = (name or "").strip().upper().replace(" ", "_").replace("-", "_")
-    aliases = {"BLACK": "BLACK_METAL", "AMBIENT": "CLEAN_AMBIENT", "CLEAN": "CLEAN_AMBIENT", "MODERN": "MODERN_METAL"}
+    aliases = {
+        "BLACK": "BLACK_METAL", "BM": "BLACK_METAL",
+        "AMBIENT": "CLEAN_AMBIENT", "CLEAN": "CLEAN_AMBIENT",
+        "MODERN": "MODERN_METAL",
+        "DEATH": "DEATH_METAL", "FLORIDA": "DEATH_METAL",
+        "HM2": "DEATH_HM2", "HM_2": "DEATH_HM2", "SWEDISH": "DEATH_HM2", "STOCKHOLM": "DEATH_HM2",
+        "STONER": "STONER", "FUZZ": "STONER", "DESERT": "STONER",
+    }
     key = aliases.get(key, key)
     return load().get("banks", {}).get(key)
 

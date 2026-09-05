@@ -1,7 +1,9 @@
 {
-  "law": "Free/OSS First. These tones live in the repo. No paid API.",
+  "law": "Free/OSS First. Tones live in the repo. No paid API. Mix-ready means headroom + slot vs drums/bass, not louder clipping.",
   "chain": "HP(LowCut+TIGHT) → Tight shelf → Body peak → Drive → tanh(MORPH) → Bite → Air → Gate → Delay/Reverb → Trim",
   "oversample_note": "4x on the shaper unless the preset says otherwise. ADAA is native VST, not the browser shaper.",
+  "mix_law": "Never win A/B by loudness. Trim after the chain. Guitar bus HPF is not the plugin LOW_CUT. Leave crest for drums. Stereo width after mono compatibility.",
+  "parameter_ids": ["LOW_CUT", "TIGHT", "BODY", "GAIN", "MORPH", "BITE", "AIR", "GATE", "SPACE", "MASTER", "OVERSAMPLING"],
   "banks": {
     "THALL": {
       "family": "flagship tight djent",
@@ -21,7 +23,18 @@
       "oversample": "4x",
       "gate_behavior": "fast chug mute, hysteresis 0.58, stay open only when GATE near 0",
       "gain_structure": "drive 0.72+GAIN^2*5.8 into tanh amount 1.4+GAIN^2*22, modern/asym morph 40",
-      "target": "tight palm mute, pick attack at Bite, little room"
+      "target": "tight palm mute, pick attack at Bite, little room",
+      "energy": {"attack": 78, "density": 62, "frost": 15, "sludge": 12, "chainsaw": 20, "sag": 18, "hiss": 22, "sustain": 45},
+      "mix": {
+        "slot": "dual rhythm, slightly inside the cymbals",
+        "bus_hpf_hz": 70,
+        "vs_bass": "cut 80-110 Hz so 808/bass owns the floor",
+        "vs_drums": "gate aligned to kick; pick transient at Bite not snare 5 kHz",
+        "width": "tight double, not a wall",
+        "headroom_db": 6,
+        "mono": "must survive",
+        "trim": "MASTER until kicks still punch"
+      }
     },
     "DJENT": {
       "family": "modern rhythm",
@@ -41,7 +54,18 @@
       "oversample": "4x",
       "gate_behavior": "aggressive close on stops, short decay",
       "gain_structure": "higher GAIN, morph toward symmetric tanh (odd harmonics)",
-      "target": "percussive 0-0-0-1, almost dry"
+      "target": "percussive 0-0-0-1, almost dry",
+      "energy": {"attack": 92, "density": 40, "frost": 8, "sludge": 5, "chainsaw": 15, "sag": 5, "hiss": 18, "sustain": 22},
+      "mix": {
+        "slot": "percussive guitar = extra drum",
+        "bus_hpf_hz": 80,
+        "vs_bass": "leave sub entirely",
+        "vs_drums": "stops must be digital-silent or the grid dies",
+        "width": "hard dual, dry",
+        "headroom_db": 8,
+        "mono": "must survive",
+        "trim": "quieter than it feels in solo"
+      }
     },
     "DOOM": {
       "family": "slow heavy",
@@ -61,7 +85,18 @@
       "oversample": "4x",
       "gate_behavior": "mostly open, slow bloom, do not chop tails",
       "gain_structure": "lower GAIN, morph toward asymmetric (even harmonics)",
-      "target": "thick low-mids, long notes, wetter delay"
+      "target": "thick low-mids, long notes, wetter delay",
+      "energy": {"attack": 28, "density": 88, "frost": 5, "sludge": 90, "chainsaw": 10, "sag": 70, "hiss": 8, "sustain": 92},
+      "mix": {
+        "slot": "the mass under the vocal, not a snare competitor",
+        "bus_hpf_hz": 40,
+        "vs_bass": "share 70-100 Hz; bass slightly rounder, guitar a bit of 90 Hz bark",
+        "vs_drums": "do not gate to kick; let cymbals ride over a wall",
+        "width": "wide but dark",
+        "headroom_db": 4,
+        "mono": "check; width is optional",
+        "trim": "feel weight from BODY not from MASTER"
+      }
     },
     "BLACK_METAL": {
       "family": "cold treble wall",
@@ -81,7 +116,111 @@
       "oversample": "4x",
       "gate_behavior": "medium, keep tremolo wash, no djent chop",
       "gain_structure": "high GAIN, morph near modern, Air up",
-      "target": "ice on top, scooped body, hiss is the point"
+      "target": "ice on top, scooped body, hiss is the point",
+      "energy": {"attack": 55, "density": 70, "frost": 95, "sludge": 8, "chainsaw": 25, "sag": 10, "hiss": 92, "sustain": 60},
+      "mix": {
+        "slot": "blizzard above the drums, not a chug pocket",
+        "bus_hpf_hz": 120,
+        "vs_bass": "bass owns everything under 150 Hz",
+        "vs_drums": "blast transients must cut through AIR; do not dull the hiss",
+        "width": "wall, almost decorrelated highs",
+        "headroom_db": 5,
+        "mono": "will thin out — acceptable",
+        "trim": "if it sounds polite, AIR is too low"
+      }
+    },
+    "DEATH_METAL": {
+      "family": "florida / brutal grind, mix-ready",
+      "low_cut_hz": 140,
+      "tight": 68,
+      "body": 48,
+      "body_freq_hz": 160,
+      "body_q": 0.75,
+      "gain": 56,
+      "morph": 30,
+      "bite": 58,
+      "bite_freq_hz": 2500,
+      "bite_q": 1.0,
+      "air": 40,
+      "gate": 58,
+      "space": 10,
+      "oversample": "4x",
+      "gate_behavior": "close on stops, keep riff sustain; faster than black, slower than djent",
+      "gain_structure": "high GAIN, slight modern bias, do not scoop all mids",
+      "target": "articulate chug + grind, kick still visible",
+      "energy": {"attack": 80, "density": 72, "frost": 12, "sludge": 25, "chainsaw": 55, "sag": 15, "hiss": 30, "sustain": 50},
+      "mix": {
+        "slot": "mid-forward rhythm with kick",
+        "bus_hpf_hz": 70,
+        "vs_bass": "cut guitar 80-120; bass distortion separate",
+        "vs_drums": "2.5 kHz bite vs snare 4-6 kHz — do not stack",
+        "width": "tight dual",
+        "headroom_db": 6,
+        "mono": "must survive",
+        "trim": "chainsaw in solo, smaller in mix"
+      }
+    },
+    "DEATH_HM2": {
+      "family": "stockholm chainsaw",
+      "low_cut_hz": 150,
+      "tight": 60,
+      "body": 72,
+      "body_freq_hz": 850,
+      "body_q": 1.15,
+      "gain": 62,
+      "morph": 28,
+      "bite": 66,
+      "bite_freq_hz": 1400,
+      "bite_q": 1.2,
+      "air": 48,
+      "gate": 50,
+      "space": 12,
+      "oversample": "4x",
+      "gate_behavior": "medium; buzz saw should ring between notes a little",
+      "gain_structure": "GAIN high, BODY is the HM-2 bump not low-end, BITE reinforces 1-1.5 kHz",
+      "target": "saw, not djent click, not black hiss",
+      "energy": {"attack": 70, "density": 78, "frost": 10, "sludge": 20, "chainsaw": 96, "sag": 22, "hiss": 35, "sustain": 58},
+      "mix": {
+        "slot": "lead-rhythm hybrid, occupies vocal-adjacent mids",
+        "bus_hpf_hz": 90,
+        "vs_bass": "keep 100 Hz out of the guitar or the bump becomes mud",
+        "vs_drums": "snare needs 200 Hz body elsewhere; guitar owns 800-1500",
+        "width": "slightly narrower than black",
+        "headroom_db": 6,
+        "mono": "must survive — the bump is mono information",
+        "trim": "if kick disappears, BODY is too low in frequency"
+      }
+    },
+    "STONER": {
+      "family": "fuzz sag / desert",
+      "low_cut_hz": 60,
+      "tight": 12,
+      "body": 80,
+      "body_freq_hz": 95,
+      "body_q": 0.5,
+      "gain": 34,
+      "morph": 82,
+      "bite": 18,
+      "bite_freq_hz": 1600,
+      "bite_q": 0.55,
+      "air": 22,
+      "gate": 8,
+      "space": 50,
+      "oversample": "4x",
+      "gate_behavior": "almost open; only shave hiss between songs, never chop sustain",
+      "gain_structure": "lower GAIN than death, MORPH almost asymmetric; optional algebraic cousin if calibrated",
+      "target": "brown mid, sag, live tails, room not pad",
+      "energy": {"attack": 22, "density": 85, "frost": 4, "sludge": 78, "chainsaw": 8, "sag": 94, "hiss": 16, "sustain": 88},
+      "mix": {
+        "slot": "amp-in-the-room, drums sit on top",
+        "bus_hpf_hz": 35,
+        "vs_bass": "blend 60-90 Hz; fuzz guitar can own 100 Hz bark",
+        "vs_drums": "no grid-mute; snare through the fog",
+        "width": "roomy, not dual-tight",
+        "headroom_db": 4,
+        "mono": "check; some collapse is the sound",
+        "trim": "weight from sag/BODY, not fizz"
+      }
     },
     "CLEAN_AMBIENT": {
       "family": "pad / void",
@@ -101,7 +240,18 @@
       "oversample": "2x",
       "gate_behavior": "open. GATE=0 never ducks.",
       "gain_structure": "almost no clip, morph to asym for soft even harmonics, SPACE wet",
-      "target": "bloom, delay 75ms+MORPH*280ms, reverb SPACE^1.4*0.34"
+      "target": "bloom, delay 75ms+MORPH*280ms, reverb SPACE^1.4*0.34",
+      "energy": {"attack": 8, "density": 50, "frost": 40, "sludge": 5, "chainsaw": 0, "sag": 15, "hiss": 25, "sustain": 95},
+      "mix": {
+        "slot": "bed under everything",
+        "bus_hpf_hz": 30,
+        "vs_bass": "high-pass the pad if it fights sub",
+        "vs_drums": "never gated to grid",
+        "width": "widest",
+        "headroom_db": 8,
+        "mono": "will shrink — ok",
+        "trim": "felt not seen"
+      }
     },
     "MODERN_METAL": {
       "family": "wide mix-ready",
@@ -121,7 +271,18 @@
       "oversample": "4x",
       "gate_behavior": "studio mute, not as snappy as DJENT",
       "gain_structure": "balanced drive, slight modern bias",
-      "target": "works in a mix without extra EQ"
+      "target": "works in a mix without extra EQ",
+      "energy": {"attack": 70, "density": 58, "frost": 12, "sludge": 15, "chainsaw": 22, "sag": 20, "hiss": 24, "sustain": 48},
+      "mix": {
+        "slot": "default commercial rhythm",
+        "bus_hpf_hz": 65,
+        "vs_bass": "standard 80-120 handoff",
+        "vs_drums": "kick click vs Bite 2.5 kHz",
+        "width": "modern dual",
+        "headroom_db": 6,
+        "mono": "must survive",
+        "trim": "starting point for a session"
+      }
     }
   }
 }
