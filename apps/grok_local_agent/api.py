@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from apps.local_agent.git_worker import git_branch, git_diff, git_status
 from apps.local_agent.workspace_worker import list_files, read_file
 
-from .config import AGENT_NAME, AGENT_PORT, AGENT_VERSION, PROJECT_ROOT
+from .config import AGENT_NAME, AGENT_PORT, AGENT_VERSION, PROJECT_ROOT, offline_mode
 from .grok_client import GrokClientError, chat as grok_chat
 
 
@@ -42,6 +42,7 @@ def health():
         "port": AGENT_PORT,
         "original_agent_port": 8765,
         "role": "grok-only",
+        "offline": offline_mode(),
         "xai_key_present": bool(key),
         "xai_key_prefix": key[:4] if key else None,
         "xai_key_length": len(key),
