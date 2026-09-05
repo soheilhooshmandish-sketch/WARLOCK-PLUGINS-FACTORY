@@ -13,7 +13,6 @@ from .git_worker import (
     git_diff,
     git_status,
 )
-from .grok_client import GrokClientError, chat as grok_chat
 from .workspace_worker import (
     delete_path,
     list_files,
@@ -52,11 +51,6 @@ class GitCommitRequest(BaseModel):
     message: str
 
 
-class GrokChatRequest(BaseModel):
-    message: str
-    model: str | None = None
-
-
 def require_token(authorization: str | None) -> None:
     expected_token = os.getenv("WARLOCK_AGENT_TOKEN")
 
@@ -90,35 +84,6 @@ def workspace(authorization: str | None = Header(default=None)):
         "workspace": str(PROJECT_ROOT),
         "exists": PROJECT_ROOT.exists(),
     }
-
-
-@app.post("/grok/chat")
-def grok_chat_route(
-    request: GrokChatRequest,
-    authorization: str | None = Header(default=None),
-):
-    require_token(authorization)
-
-    write_audit(
-        "grok_chat",
-        "received",
-        {"model": request.model},
-    )
-
-    try:
-        result = grok_chat(request.message, request.model)
-    except ValueError as exc:
-        write_audit("grok_chat", "denied", {"error": str(exc)})
-        raise HTTPException(status_code=400, detail=str(exc))
-    except GrokClientError as exc:
-        write_audit("grok_chat", "failed", {"error": str(exc)})
-        raise HTTPException(status_code=502, detail=str(exc))
-    except Exception:
-        write_audit("grok_chat", "failed")
-        raise HTTPException(status_code=500, detail="Grok request failed")
-
-    write_audit("grok_chat", "success", {"model": result.get("model")})
-    return result
 
 
 @app.post("/command")
