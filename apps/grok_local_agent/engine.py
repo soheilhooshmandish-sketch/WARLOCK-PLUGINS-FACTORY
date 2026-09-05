@@ -18,6 +18,10 @@ from .selfmap import api_routes
 from .sources import list_sources
 from .windows import route as windows_route
 from .operator import route as operator_route
+from .presets import dump as preset_dump, NAMES as PRESET_NAMES
+from .checkpoint import last as ckpt_last, save as ckpt_save
+from .stack import report as stack_report
+from .dsp_local import sine_probe
 
 
 def _has(key: str, *words: str) -> bool:
@@ -84,6 +88,18 @@ def plan(text: str) -> list[tuple[str, callable]]:
         "permission", "workflow", "ماوس", "کیبورد", "mouse", "keyboard",
     ):
         add("operator", lambda: operator_route(text))
+    if _has(key, "preset", "پریست", "thall", "djent", "doom", "black metal", "ambient", "modern metal", "تون"):
+        name = next((n for n in PRESET_NAMES if n.lower().replace("_", " ") in key or n.lower() in key), None)
+        add("preset", lambda n=name: preset_dump(n))
+    if _has(key, "stack", "oss", "رایگان", "free/oss", "معماری", "architecture", "قانون"):
+        add("stack", stack_report)
+    if _has(key, "checkpoint", "چک پوینت", "sqlite", "حافظه"):
+        if _has(key, "save", "ذخیره"):
+            add("ckpt-save", lambda: ckpt_save("note", text))
+        else:
+            add("ckpt", lambda: ckpt_last(8))
+    if _has(key, "fft", "تحلیل صدا", "audio analysis", "bands"):
+        add("dsp-local", lambda: str(sine_probe("THALL")))
     brain_keys = (
         "interrupt", "checkpointer", "reducer", "add_messages", "selector",
         "candidate", "hitl", "crewai", "langgraph", "autogen", "oversight",

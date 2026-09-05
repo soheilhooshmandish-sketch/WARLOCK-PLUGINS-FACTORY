@@ -7,6 +7,12 @@ try:
 except Exception:
     DSP_CARDS, DSP_SOURCES, DSP_BRAIN = [], [], ""
 
+try:
+    from .presets import cards as preset_cards
+except Exception:
+    def preset_cards():
+        return []
+
 STOP = {
     "the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "is", "are",
     "how", "what", "why", "with", "this", "that", "az", "be", "dar",
@@ -19,6 +25,8 @@ SYN = {
     "business": "warlock",
     "oversample": "dsp", "adaa": "dsp", "tanh": "dsp", "waveshape": "dsp",
     "alias": "dsp", "gate": "dsp", "morph": "dsp",
+    "thall": "preset", "djent": "preset", "doom": "preset",
+    "black": "preset", "ambient": "preset", "metal": "preset",
 }
 
 
@@ -58,7 +66,7 @@ def _live_cards() -> list[dict]:
 
 def retrieve(query: str, k: int = 5) -> list[dict]:
     q = _tok(query)
-    deck = list(CARDS) + list(DSP_CARDS) + _live_cards()
+    deck = list(CARDS) + list(DSP_CARDS) + preset_cards() + _live_cards()
     if not q:
         return deck[:k]
     scored = []
@@ -80,7 +88,8 @@ def answer(query: str) -> str:
     hits = retrieve(query)
     topics = {h["topic"] for h in hits}
     urls = [s for s in list(SOURCES) + list(DSP_SOURCES) if s["topic"] in topics][:8]
-    lines = [f"Farnaz brain {len(CARDS) + len(DSP_CARDS)} docs + live ledger"]
+    n = len(CARDS) + len(DSP_CARDS) + len(preset_cards())
+    lines = [f"Farnaz local brain {n} docs. Free/OSS First. No API required."]
     if DSP_BRAIN and any(h.get("topic") == "dsp" for h in hits):
         lines.append(DSP_BRAIN)
     for h in hits:

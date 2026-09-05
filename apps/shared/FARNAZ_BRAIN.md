@@ -67,3 +67,13 @@ Capabilities (grant with confirm=true, 1-120 minutes):
 - workflow — up to 8 steps of the above
 
 Never controls apps/local_agent. Never binds 0.0.0.0. Screenshot does not leave the PC.
+
+## Free / Open-Source First
+
+Farnaz Local Brain → free tools → DSP engine → JUCE → VST3.
+
+Paid APIs are optional. Preset banks live in `apps/shared/presets.json`:
+THALL, DJENT, DOOM, BLACK_METAL, CLEAN_AMBIENT, MODERN_METAL.
+Each bank has DSP targets, frequency ranges, gate behavior, gain structure, oversampling, baseline.
+Memory is SQLite. Backup is Git. Permission is the operator grant layer.
+
