@@ -3,9 +3,10 @@ import os
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 AGENT_NAME = "Farnaz"
-AGENT_VERSION = "3.0.0"
+AGENT_VERSION = "3.1.0"
 AGENT_HOST = "127.0.0.1"
 AGENT_PORT = 8766
+ORIGINAL_PORT = 8765
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 STATE_DIR = Path(__file__).resolve().parent / "state"
 SELF_DIR = Path(__file__).resolve().parent
