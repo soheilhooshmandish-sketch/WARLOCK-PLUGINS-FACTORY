@@ -13,6 +13,7 @@ from .peers import fleet
 from .recall import last as recall_last
 from .selector import run_selector
 from .selfmap import api_routes
+from .sources import list_sources
 
 
 def _has(key: str, *words: str) -> bool:
@@ -59,6 +60,13 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", lambda: FACTS)
+    if _has(key, "منبع", "منابع", "source", "sources", "citation", "docs"):
+        topic = None
+        for t in ("autogen", "crewai", "langgraph", "xai", "oversight"):
+            if t in key:
+                topic = t
+                break
+        add("sources", lambda: list_sources(topic))
     if _has(key, "autogen", "roundrobin", "groupchat") and "selector" not in key:
         add("autogen", lambda: run_autogen(text))
     if _has(key, "selector", "انتخابگر", "@scout", "@analyst", "@reviewer", "@fleet"):
