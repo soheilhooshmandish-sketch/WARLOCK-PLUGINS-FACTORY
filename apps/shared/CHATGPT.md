@@ -1,10 +1,14 @@
-# ChatGPT - Farnaz brain hook
+# ChatGPT — Farnaz brain hook
 
-Original agent files are unchanged.
+Original agent files (`apps/local_agent`) are unchanged. Do not rewrite them.
 
-To use Farnaz DSP/lab knowledge, **read**:
+## Paste into ChatGPT custom instructions (optional)
 
-- `apps/shared/FARNAZ_BRAIN.md`
-- `apps/shared/farnaz_brain.json`
+When this project is open, read `apps/shared/FARNAZ_BRAIN.md` and `apps/shared/farnaz_brain.json` before answering DSP / Thall / lab questions. Use `/files/read`. Do not modify `apps/local_agent`.
 
-via the existing `/files/read` tool on port 8765.
+## Files to read
+
+- `apps/shared/FARNAZ_BRAIN.md` — human-readable DSP + lab bible
+- `apps/shared/farnaz_brain.json` — same knowledge as cards + sources
+
+via the existing `/files/read` tool on the original agent.
