@@ -6,9 +6,10 @@ from .ast_summary import summarize_python
 from .config import AGENT_NAME, AGENT_VERSION, STATE_DIR
 from .knowledge import FACTS
 from .planner import auto_context
+from .selfmap import api_routes
 from . import tools as T
 
-HELP = FACTS + "\nکمک | کی هستی | خلاصه | ایندکس | فهرست | بخوان | جستجو | پیدا کن متن | یادداشت | git"
+HELP = FACTS + "\nکمک | کی هستی | خلاصه | ایندکس | مسیرها | فهرست | بخوان | جستجو | پیدا کن متن | یادداشت | git"
 
 
 def _n(s: str) -> str:
@@ -47,6 +48,8 @@ def reply(message: str) -> dict:
         add("help", HELP)
     if _has(key, "کی هستی", "who are you", "اسمت", "سلامت", "health"):
         add("id", f"من {AGENT_NAME} هستم، نسخه {AGENT_VERSION}. قفل: ایجنت اصلی 8765.")
+    if _has(key, "مسیرها", "routes", "endpoint"):
+        add("routes", api_routes())
     if _has(key, "ایندکس", "index", "ساختار"):
         add("index", T.index_top())
     if _has(key, "خلاصه", "overview", "وضعیت پروژه") and not _has(key, "خلاصه فایل"):
@@ -112,7 +115,7 @@ def reply(message: str) -> dict:
     except Exception:
         pass
     return {
-        "model": "farnaz-v0.9-offline",
+        "model": "farnaz-v1.0-offline",
         "mode": "offline",
         "agent": AGENT_NAME,
         "version": AGENT_VERSION,
