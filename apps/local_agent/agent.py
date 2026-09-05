@@ -1,9 +1,7 @@
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-
-AGENT_NAME = "Warlock Local Agent"
-AGENT_VERSION = "0.1.0"
+from .config import AGENT_NAME, AGENT_VERSION, PROJECT_ROOT
 
 
 def health_check():
@@ -11,7 +9,8 @@ def health_check():
         "agent": AGENT_NAME,
         "version": AGENT_VERSION,
         "status": "healthy",
-        "workspace": str(Path.cwd()),
+        "workspace": str(PROJECT_ROOT),
+        "cwd": str(Path.cwd()),
         "time": datetime.now().isoformat(),
     }
 
