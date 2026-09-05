@@ -3,7 +3,7 @@ import winreg
 
 import uvicorn
 
-from .config import AGENT_HOST, AGENT_PORT
+from .config import AGENT_HOST, AGENT_PORT, offline_mode
 
 
 def load_user_env(*names: str) -> None:
@@ -23,6 +23,7 @@ def load_token():
         "WARLOCK_AGENT_TOKEN",
         "XAI_API_KEY",
         "GROK_API_KEY",
+        "WARLOCK_GROK_OFFLINE",
     )
     if os.getenv("XAI_API_KEY") and not os.getenv("GROK_API_KEY"):
         os.environ["GROK_API_KEY"] = os.environ["XAI_API_KEY"]
@@ -32,10 +33,11 @@ def load_token():
     if not os.getenv("WARLOCK_GROK_AGENT_TOKEN") and not os.getenv("WARLOCK_AGENT_TOKEN"):
         raise RuntimeError("No agent token is configured")
 
-    if os.getenv("XAI_API_KEY"):
-        print("XAI_API_KEY: present")
-    else:
-        print("XAI_API_KEY: missing")
+    if "WARLOCK_GROK_OFFLINE" not in os.environ:
+        os.environ["WARLOCK_GROK_OFFLINE"] = "1"
+
+    print("XAI_API_KEY: present" if os.getenv("XAI_API_KEY") else "XAI_API_KEY: missing")
+    print("OFFLINE: on" if offline_mode() else "OFFLINE: off")
 
 
 if __name__ == "__main__":
