@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Farnaz</title>
+  <link rel="stylesheet" href="/avatar/desktop.css" />
+</head>
+<body>
+  <aside id="panel" class="idle">
+    <header id="drag">
+      <b>FARNAZ</b>
+      <span id="status">Ready</span>
+      <div class="btns">
+        <button type="button" id="min" title="Minimize">–</button>
+        <button type="button" id="hide" title="Hide">×</button>
+      </div>
+    </header>
+    <div id="face-wrap">
+      <object id="face" data="/avatar/face.svg" type="image/svg+xml" aria-label="Farnaz"></object>
+      <p id="listen-flag" hidden>MIC ON</p>
+    </div>
+    <p id="line">Hold to talk. She is one character — brain, voice, face.</p>
+    <div class="row">
+      <button type="button" id="ptt">HOLD TO TALK</button>
+      <button type="button" id="stop">STOP</button>
+      <button type="button" id="mute">MUTE</button>
+    </div>
+    <form id="chat">
+      <input id="msg" autocomplete="off" placeholder="پیام برای فرناز" />
+      <button type="submit">SEND</button>
+    </form>
+    <input id="token" type="password" placeholder="token" />
+  </aside>
+  <script src="/avatar/desktop.js"></script>
+</body>
+</html>

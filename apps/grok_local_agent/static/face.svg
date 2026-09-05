@@ -1,0 +1,66 @@
+  <style>
+    #farnaz-head { animation: sway 7s ease-in-out infinite; transform-origin: 80px 148px; }
+    #farnaz-breathe { animation: breath 4.8s ease-in-out infinite; transform-origin: 80px 184px; }
+    #eye-l, #eye-r { transform-box: fill-box; transform-origin: center; animation: blink 5.4s infinite; }
+    .pupil { animation: glance 9s ease-in-out infinite; }
+    @keyframes sway { 0%,100%{transform:rotate(-1.1deg) translateY(0)} 50%{transform:rotate(1.3deg) translateY(1px)} }
+    @keyframes breath { 0%,100%{transform:scale(1,1)} 50%{transform:scale(1.02,1.035)} }
+    @keyframes blink { 0%,91%,100%{transform:scaleY(1)} 93%,95%{transform:scaleY(.08)} }
+    @keyframes glance { 0%,40%,100%{transform:translate(0,0)} 50%{transform:translate(1.2px,.4px)} 70%{transform:translate(-1px,0)} }
+    svg[data-state="listening"] #farnaz-listen-ring { opacity:.75; }
+    svg[data-state="thinking"] #farnaz-brow { transform: translateY(-1px); }
+    svg[data-paused="1"] * { animation: none !important; }
+  </style>
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e2c4a4"/>
+      <stop offset="1" stop-color="#c49a74"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1210"/>
+      <stop offset="1" stop-color="#3a241c"/>
+    </linearGradient>
+    <radialGradient id="iris" cx="50%" cy="40%" r="60%">
+      <stop offset="0" stop-color="#6b4a28"/>
+      <stop offset="1" stop-color="#24140c"/>
+    </radialGradient>
+  </defs>
+  <rect width="160" height="200" fill="#0b0b0d"/>
+  <g id="farnaz-breathe">
+    <path fill="#16141a" d="M28 168c18-22 86-22 104 0v32H28z"/>
+    <path fill="#c9a36a" d="M76 168h8v10h-8z" opacity=".85"/>
+  </g>
+  <g id="farnaz-head">
+    <ellipse cx="80" cy="86" rx="46" ry="56" fill="url(#hair)"/>
+    <path fill="url(#hair)" d="M34 90c-8 38 8 70 46 74 38-4 54-36 46-74 4 28-8 58-46 62-38-4-50-34-46-62z"/>
+    <ellipse cx="80" cy="92" rx="38" ry="46" fill="url(#skin)"/>
+    <path fill="#b88864" opacity=".35" d="M48 108c8 22 56 22 64 0-6 18-58 18-64 0z"/>
+    <g id="farnaz-eyes">
+      <g id="eye-l">
+        <ellipse cx="64" cy="86" rx="9" ry="6" fill="#f4efe8"/>
+        <ellipse class="pupil" cx="64" cy="87" rx="3.4" ry="3.6" fill="url(#iris)"/>
+        <circle cx="65.4" cy="85.6" r="1.1" fill="#fff"/>
+      </g>
+      <g id="eye-r">
+        <ellipse cx="96" cy="86" rx="9" ry="6" fill="#f4efe8"/>
+        <ellipse class="pupil" cx="96" cy="87" rx="3.4" ry="3.6" fill="url(#iris)"/>
+        <circle cx="97.4" cy="85.6" r="1.1" fill="#fff"/>
+      </g>
+    </g>
+    <g id="farnaz-brow">
+      <path d="M54 76c6-4 14-4 20 0" fill="none" stroke="#2a1a12" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M86 76c6-4 14-4 20 0" fill="none" stroke="#2a1a12" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+    <path d="M80 90c0 8-4 12-8 14" fill="none" stroke="#b07a58" stroke-width="1.2" opacity=".7"/>
+    <g id="farnaz-mouth">
+      <path class="m-rest" d="M70 124c6 5 14 5 20 0" fill="none" stroke="#8a3a3a" stroke-width="1.8" stroke-linecap="round"/>
+      <ellipse class="m-a" cx="80" cy="126" rx="8" ry="6" fill="#6a2430" opacity="0"/>
+      <ellipse class="m-o" cx="80" cy="126" rx="5" ry="6.5" fill="#6a2430" opacity="0"/>
+      <path class="m-e" d="M68 124c8 6 16 6 24 0" fill="none" stroke="#8a3a3a" stroke-width="2.2" opacity="0"/>
+      <path class="m-m" d="M72 125h16" fill="none" stroke="#8a3a3a" stroke-width="2" opacity="0"/>
+      <path class="m-f" d="M70 123h20" fill="none" stroke="#d8c4b0" stroke-width="2" opacity="0"/>
+    </g>
+    <circle cx="42" cy="108" r="3" fill="#c9a36a" opacity=".9"/>
+  </g>
+  <circle id="farnaz-listen-ring" cx="80" cy="96" r="70" fill="none" stroke="#7dba7a" stroke-width="2" opacity="0"/>
+</svg>

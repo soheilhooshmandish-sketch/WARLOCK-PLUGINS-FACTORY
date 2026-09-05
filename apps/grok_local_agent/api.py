@@ -19,6 +19,8 @@ from apps.local_agent.workspace_worker import (
 
 from .config import AGENT_NAME, AGENT_PORT, AGENT_VERSION, PROJECT_ROOT, STATIC_DIR, offline_mode
 from .grok_client import GrokClientError, chat as grok_chat
+from .avatar.avatar_state import State, get_state as avatar_get, set_state as avatar_set
+
 
 
 app = FastAPI(title=AGENT_NAME, version=AGENT_VERSION)
@@ -93,6 +95,8 @@ def health_payload():
         "xai_key_present": bool(key),
         "xai_key_prefix": key[:4] if key else None,
         "xai_key_length": len(key),
+        "avatar": avatar_get().get("state"),
+        "desktop": "/desktop",
     }
 
 
@@ -110,6 +114,11 @@ def ui():
 @app.get("/voice")
 def voice():
     return FileResponse(Path(STATIC_DIR) / "voice.html")
+
+
+@app.get("/desktop")
+def desktop():
+    return FileResponse(Path(STATIC_DIR) / "desktop.html")
 
 
 @app.get("/health")
@@ -258,22 +267,30 @@ def grok_chat_route(
     authorization: str | None = Header(default=None),
 ):
     require_token(authorization)
+    avatar_set(State.THINKING, request.message[:80])
     try:
         result = grok_chat(request.message, request.model)
         print(
             f"CHAT mode={result.get('mode')} model={result.get('model')} "
             f"chars={len(result.get('content') or '')}"
         )
+        avatar_set(State.SUCCESS, "chat")
         return result
     except ValueError as exc:
+        avatar_set(State.ERROR, str(exc)[:80])
         print(f"CHAT ERROR 400: {exc}")
         raise HTTPException(status_code=400, detail=str(exc))
     except GrokClientError as exc:
+        avatar_set(State.ERROR, str(exc)[:80])
         print(f"CHAT ERROR 502: {exc}")
         raise HTTPException(status_code=502, detail=str(exc))
     except Exception as exc:
+        avatar_set(State.ERROR, type(exc).__name__)
         print(f"CHAT ERROR 500: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=500, detail="Grok request failed")
 
 from .operator_routes import mount as mount_operator
+from .avatar.routes import mount as mount_avatar
 mount_operator(app, require_token)
+mount_avatar(app, require_token)
+

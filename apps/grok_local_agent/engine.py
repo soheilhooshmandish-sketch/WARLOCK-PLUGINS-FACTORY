@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 
 from . import inspect_self as S
@@ -22,6 +23,11 @@ from .presets import dump as preset_dump, NAMES as PRESET_NAMES
 from .checkpoint import last as ckpt_last, save as ckpt_save
 from .stack import report as stack_report
 from .dsp_local import sine_probe
+from .avatar.avatar_state import get_state as avatar_state
+from .avatar.avatar_engine import identity as avatar_identity
+from .avatar.voice_engine import VoiceEngine
+from .avatar.speech_input import status as mic_status
+
 
 
 def _has(key: str, *words: str) -> bool:
@@ -100,6 +106,14 @@ def plan(text: str) -> list[tuple[str, callable]]:
             add("ckpt", lambda: ckpt_last(8))
     if _has(key, "fft", "تحلیل صدا", "audio analysis", "bands"):
         add("dsp-local", lambda: str(sine_probe("THALL")))
+    if _has(key, "avatar", "آواتار", "چهره", "صورت", "voice engine", "لیپ"):
+        add("avatar", lambda: json.dumps({
+            "identity": avatar_identity(),
+            "state": avatar_state(),
+            "mic": mic_status(),
+            "tts": VoiceEngine().list_backends(),
+        }, ensure_ascii=False, indent=2))
+
     brain_keys = (
         "interrupt", "checkpointer", "reducer", "add_messages", "selector",
         "candidate", "hitl", "crewai", "langgraph", "autogen", "oversight",

@@ -66,7 +66,13 @@ Capabilities (grant with confirm=true, 1-120 minutes):
 - launch — notepad / calc / explorer / paint
 - workflow — up to 8 steps of the above
 
-Never controls apps/local_agent. Never binds 0.0.0.0. Screenshot does not leave the PC.
+Avatar = face. Voice = speech. Brain = intelligence. Never a second AI.
+
+Desktop panel: http://127.0.0.1:8766/desktop
+States: idle, listening, thinking, speaking, working, success, warning, error.
+Push-to-talk only. Mic is never always-on.
+TTS is local-first (SAPI / espeak / pyttsx3). Browser speech is fallback.
+
 
 ## Free / Open-Source First
 

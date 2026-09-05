@@ -26,7 +26,18 @@ Same workspace gate as the original agent:
 
 Console logs look like `GROK POST /files/write -> 200 (12ms)` plus `FILE write path=...`.
 
-## Start
+## Desktop avatar (4.4)
+
+Compact floating face + PTT. Not a second brain.
+
+```powershell
+python -m apps.grok_local_agent.run_agent
+# then open http://127.0.0.1:8766/desktop
+```
+
+Modules live in `apps/grok_local_agent/avatar/`. Swap TTS/portrait without touching the brain.
+Backup branch before this upgrade: `backup/farnaz-pre-avatar-20260905`.
+
 
 ```powershell
 cd C:\Users\sohei\WARLOCK-PLUGINS-FACTORY

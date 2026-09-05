@@ -30,7 +30,8 @@ dist/
 .coverage
 htmlcov/
 
-# Temporary files
+# Farnaz local state (avatar settings, sqlite, tts cache)
+apps/grok_local_agent/state/
 tmp/
 temp/agent.log
 .warlock/
