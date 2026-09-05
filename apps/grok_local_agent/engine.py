@@ -11,6 +11,7 @@ from .knowledge import FACTS
 from .orchestrator import conductor
 from .peers import fleet
 from .recall import last as recall_last
+from .selector import run_selector
 from .selfmap import api_routes
 
 
@@ -58,8 +59,11 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", lambda: FACTS)
-    if _has(key, "autogen", "roundrobin", "groupchat"):
+    if _has(key, "autogen", "roundrobin", "groupchat") and "selector" not in key:
         add("autogen", lambda: run_autogen(text))
+    if _has(key, "selector", "انتخابگر", "@scout", "@analyst", "@reviewer", "@fleet"):
+        strategy = "mention" if "@" in text else ("roundrobin" if "round" in key else "keyword")
+        add("selector", lambda: run_selector(text, strategy))
     if _has(key, "ارکستر", "orchestrat", "fleet", "چند ایجنت", "multi-agent", "agents"):
         add("orchestrate", lambda: conductor(text))
     if _has(key, "ناوگان", "peer", "8765", "8766"):
