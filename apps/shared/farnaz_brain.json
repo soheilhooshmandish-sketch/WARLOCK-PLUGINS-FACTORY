@@ -1,0 +1,22 @@
+{
+  "name": "Farnaz brain",
+  "version": "1.0",
+  "for": ["Warlock Grok agent 8766", "ChatGPT original agent 8765"],
+  "rule": "Shared knowledge. Do not rewrite apps/local_agent internals. ChatGPT may READ this file.",
+  "dsp_brain": "Thall DSP chain: HP(Low Cut+TIGHT) -> Tight shelf -> Body peak -> Drive -> tanh waveshaper(MORPH) -> Bite -> Air -> Gate -> Dry/Delay/Reverb -> Mix/Trim. Waveshape: modern tanh vs asymmetric tanh; MORPH blends; GAIN is squared into amount and drive. Oversample 4x default on the shaper only. ADAA is native-side: y=(F(xn)-F(xn-1))/dx, F=ln(cosh) for tanh. Combine ADAA+2x. Browser shaper cannot ADAA. Gate is sample-wise with hysteresis. SPACE is delay+convolver after the gate. Filters before the shaper.",
+  "cards": [
+    {"id": "dsp-chain", "topic": "dsp", "tags": "thall chain lowcut tight body drive shaper bite air gate space trim", "fact": "Thall DSP order: Input -> Highpass (Low Cut + TIGHT) -> Highshelf Tight -> Peaking Body -> Drive gain -> tanh waveshaper (MORPH) -> Peaking Bite -> Air shelf -> Gate -> Dry/Delay/Reverb mix -> Engage bypass -> Stereo/Mono -> Master+Trim. Filters before the shaper; Bite after. Never put the shaper first or bass mud makes harmonics you cannot cut."},
+    {"id": "dsp-shape", "topic": "dsp", "tags": "waveshape tanh morph gain harmonic even odd", "fact": "Waveshaping is y=f(x) per sample. Symmetric f (odd) -> odd harmonics. Asymmetric f -> even harmonics (tube-like). Thall table: amount=1.4+GAIN^2*22; modern=tanh(x*amount); asym=tanh(x*1.2) on +, tanh(x*0.82) on -; MORPH crossfades them. Drive gain before the table is 0.72+GAIN^2*5.8."},
+    {"id": "dsp-os", "topic": "dsp", "tags": "oversample alias nyquist 2x 4x upsample downsample", "fact": "Oversampling: upsample xL, run the nonlinearity, lowpass, downsample. Stops harmonics above Nyquist folding back as metallic alias. Thall WaveShaper uses 4x default, 2x, or OFF. Only the shaper is oversampled. Harder clip needs higher L. Live guitar prefers minimum-phase IIR; quality FIRs add latency."},
+    {"id": "dsp-adaa", "topic": "dsp", "tags": "adaa antiderivative antialiasing parker zavalishin tanh", "fact": "ADAA (Parker/Zavalishin DAFx-16): y=(F(x[n])-F(x[n-1]))/(x[n]-x[n-1]) with F'=f. If |dx|<eps use f(x). First-order tanh uses F=ln(cosh). Cheaper cousin: f=x/sqrt(1+x^2), F=sqrt(1+x^2). ADAA kills in-band aliases; oversampling kills high folding. Best together (ADAA+2x). Adds 1 sample delay. Native VST can do this; the browser WaveShaper cannot - it only oversamples."},
+    {"id": "dsp-gate", "topic": "dsp", "tags": "gate envelope hysteresis attack release worklet", "fact": "Warlock gate is a sample-wise worklet: peak magnitude, exponential envelope (~1.5ms attack, 55-185ms release from GATE), threshold 0.00008+0.0085*GATE^2, hysteresis close at 0.58*threshold, gain smoothed with smoothstep g^2(3-2g). GATE~0 stays open. UI attack/hold/release labels are not the kernel yet."},
+    {"id": "dsp-space", "topic": "dsp", "tags": "delay reverb morph space wet", "fact": "After the gate: dry, delay (75ms+MORPH*280ms, wet up to 22% SPACE), and short convolver reverb (wet SPACE^1.4*0.34). MORPH both tints the shaper and stretches delay. LEVEL*TRIM(dB) on master. Bypass compensates loudness so Engage does not jump."},
+    {"id": "lab-layout", "topic": "lab", "tags": "ui layout sound chat send touch farnaz", "fact": "Lab layout: menus on top, tools left, program page left-wide, canvas center, inspect+Farnaz right. SOUND tab: RECORD/DEMO/MORPH readout are the primary cluster; DSP details below. Chat: SEND is the only loud action. System status is PROJECT line (e.g. MORPH . MOVE). Farnaz icon lives bottom-left; click opens CHAT."},
+    {"id": "thall", "topic": "warlock", "tags": "thall vst plugin native", "fact": "SKU THALL - Warlock Thall, native VST3, in development. Flagship product of WARLOCK Plugins Factory. Owner Soheil."}
+  ],
+  "sources": [
+    {"topic": "dsp", "title": "DAFx-16 ADAA Parker Zavalishin Le Bivic", "url": "https://dafx16.vutbr.cz/dafxpapers/20-DAFx-16_paper_41-PN.pdf"},
+    {"topic": "dsp", "title": "Vicanek alias suppression note", "url": "https://vicanek.de/articles/AADistortion.pdf"},
+    {"topic": "dsp", "title": "Chowdhury ADAA notes", "url": "https://ccrma.stanford.edu/~jatin/Notebooks/adaa.html"}
+  ]
+}

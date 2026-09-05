@@ -2,7 +2,7 @@ import os
 
 import httpx
 
-from .brain import reply as offline_reply
+from .brain import answer, reply as offline_reply
 from .config import XAI_API_BASE, XAI_MODEL, offline_mode
 
 
@@ -36,6 +36,7 @@ def chat(message: str, model: str | None = None) -> dict:
             "XAI_API_KEY is not an xAI key. Expected a key starting with xai- from https://console.x.ai"
         )
 
+    brain = answer(message.strip())[:2800]
     payload = {
         "model": chosen_model,
         "messages": [
@@ -43,7 +44,9 @@ def chat(message: str, model: str | None = None) -> dict:
                 "role": "system",
                 "content": (
                     "You are Farnaz, the Warlock Grok local agent. "
-                    "Never modify apps/local_agent or the original ChatGPT agent."
+                    "Never modify apps/local_agent or the original ChatGPT agent. "
+                    "Use this brain when the user asks about DSP, Thall, oversample, ADAA, gate, or lab layout:\n"
+                    + brain
                 ),
             },
             {"role": "user", "content": message.strip()},

@@ -1,19 +1,24 @@
-"""Local retrieval over curated cards + live WARLOCK ledger."""
+"""Local retrieval over curated cards + live WARLOCK ledger + shared Farnaz brain."""
 
 from .sources import CARDS, SOURCES
 
+try:
+    from .dsp_cards import CARDS as DSP_CARDS, SOURCES as DSP_SOURCES, DSP_BRAIN
+except Exception:
+    DSP_CARDS, DSP_SOURCES, DSP_BRAIN = [], [], ""
+
 STOP = {
     "the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "is", "are",
-    "how", "what", "why", "with", "this", "that", "از", "به", "در", "که", "را",
-    "یک", "چی", "چیست", "توضیح", "explain", "بگو", "کن", "کنی", "every", "all",
+    "how", "what", "why", "with", "this", "that", "az", "be", "dar",
+    "explain", "every", "all",
 }
 SYN = {
     "pause": "interrupt", "resume": "interrupt", "checkpoint": "checkpointer",
     "persist": "checkpointer", "hitl": "human", "approval": "approve",
     "function": "tool", "tools": "tool", "mcp": "protocol",
-    "گروک": "xai", "کلید": "xai", "قفل": "lock",
-    "کسب": "warlock", "تجارت": "warlock", "business": "warlock",
-    "مشتری": "customer", "فاکتور": "quote", "محصول": "thall",
+    "business": "warlock",
+    "oversample": "dsp", "adaa": "dsp", "tanh": "dsp", "waveshape": "dsp",
+    "alias": "dsp", "gate": "dsp", "morph": "dsp",
 }
 
 
@@ -53,7 +58,7 @@ def _live_cards() -> list[dict]:
 
 def retrieve(query: str, k: int = 5) -> list[dict]:
     q = _tok(query)
-    deck = list(CARDS) + _live_cards()
+    deck = list(CARDS) + list(DSP_CARDS) + _live_cards()
     if not q:
         return deck[:k]
     scored = []
@@ -74,11 +79,22 @@ def retrieve(query: str, k: int = 5) -> list[dict]:
 def answer(query: str) -> str:
     hits = retrieve(query)
     topics = {h["topic"] for h in hits}
-    urls = [s for s in SOURCES if s["topic"] in topics][:8]
-    lines = [f"Farnaz brain {len(CARDS)} docs + live ledger"]
+    urls = [s for s in list(SOURCES) + list(DSP_SOURCES) if s["topic"] in topics][:8]
+    lines = [f"Farnaz brain {len(CARDS) + len(DSP_CARDS)} docs + live ledger"]
+    if DSP_BRAIN and any(h.get("topic") == "dsp" for h in hits):
+        lines.append(DSP_BRAIN)
     for h in hits:
         lines.append(f"[{h['topic']}/{h['id']}] {h['fact']}")
     if urls:
         lines.append("sources:")
         lines.extend(f"- {u['title']}: {u['url']}" for u in urls)
     return "\n\n".join(lines)
+
+
+def reply(message: str) -> dict:
+    return {
+        "model": "grok-4.6-offline",
+        "mode": "offline",
+        "content": answer(message),
+        "raw_id": "offline-brain",
+    }
