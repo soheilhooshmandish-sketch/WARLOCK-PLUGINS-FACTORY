@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 import json
 
+from .aliases import normalize
 from .config import AGENT_NAME, AGENT_VERSION, PELE_CAP, STATE_DIR
 from .engine import run
+from .facts import answer
 from .progress import bump
 
 
@@ -20,8 +22,12 @@ def _mem(user: str, reply: str) -> None:
 
 
 def reply(message: str) -> dict:
-    text = message.strip()
+    text = normalize(message.strip())
     used, chunks = run(text)
+    fact = answer(text)
+    if fact:
+        chunks = [fact] + chunks
+        used = ["qa"] + used
     short = any(w in text.lower() for w in ("کوتاه", "short", "voice"))
     if short:
         chunks = [c[:280] for c in chunks[:2]]
@@ -33,7 +39,7 @@ def reply(message: str) -> dict:
     except Exception:
         pass
     return {
-        "model": "farnaz-v2.2-offline",
+        "model": "farnaz-v2.3-offline",
         "mode": "offline",
         "agent": AGENT_NAME,
         "version": AGENT_VERSION,
