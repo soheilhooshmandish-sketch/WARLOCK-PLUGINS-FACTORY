@@ -7,35 +7,31 @@ import sys
 from apps.local_agent.git_worker import git_branch, git_diff, git_status
 from apps.local_agent.workspace_worker import list_files, read_file
 
-from .config import AGENT_NAME, AGENT_VERSION, PROJECT_ROOT, PROTECTED_PATHS, STATE_DIR
+from .config import AGENT_NAME, AGENT_VERSION, PROJECT_ROOT, PROTECTED_PATHS, SKIP_DIRS, STATE_DIR
 
-HELP = """فرناز 0.6.0 — ایجنت محلی هوشمند (آفلاین)
-قفل: apps/local_agent و ایجنت ChatGPT روی 8765
+HELP = """فرناز 0.7.0 — ایجنت محلی هوشمند
+قفل دائمی: apps/local_agent و ChatGPT روی 8765
 
-نمونه دستور:
-کی هستی | کمک | خلاصه
-فهرست apps/grok_local_agent
-بخوان apps/grok_local_agent/brain.py
-جستجو grok_client
-خلاصه فایل apps/grok_local_agent/api.py
-git status | branch | diff
+بپرسید: کی هستی، کمک، خلاصه، فهرست، بخوان، جستجو، پیدا کن متن، git، چی بلدی
 """
 
 
-def _norm(text: str) -> str:
-    return " ".join(text.lower().split())
+def _n(text: str) -> str:
+    return " ".join(text.lower().replace("‌", " ").split())
 
 
-def _is_protected(path: str) -> bool:
+def _protected(path: str) -> bool:
     p = path.replace("\\", "/").lstrip("./")
     return any(p == g or p.startswith(g + "/") for g in PROTECTED_PATHS)
 
 
-def _extract_path(text: str) -> str | None:
-    match = re.search(r"([\w./\\-]+\.[a-zA-Z0-9]+|[\w./\\-]+/[\w./\\-]+)", text)
-    if not match:
-        return None
-    return match.group(1).replace("\\", "/")
+def _path_in(text: str) -> str | None:
+    m = re.search(r"([\w./\\-]+\.[A-Za-z0-9]+|[\w./\\-]+/[\w./\\-]+)", text)
+    return m.group(1).replace("\\", "/") if m else None
+
+
+def _skip(p: Path) -> bool:
+    return any(part in SKIP_DIRS for part in p.parts)
 
 
 def _remember(user: str, reply: str) -> None:
@@ -47,106 +43,132 @@ def _remember(user: str, reply: str) -> None:
             data = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             data = []
-    data.append({"t": datetime.now(timezone.utc).isoformat(), "user": user[:500], "reply": reply[:500]})
-    path.write_text(json.dumps(data[-20:], ensure_ascii=False, indent=2), encoding="utf-8")
+    data.append({"t": datetime.now(timezone.utc).isoformat(), "user": user[:400], "reply": reply[:400]})
+    path.write_text(json.dumps(data[-30:], ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _safe_list(path: str) -> str:
-    if _is_protected(path):
-        return f"قفل: {path}"
+def _list(path: str) -> str:
+    if _protected(path):
+        return f"قفل است: {path}"
     try:
         files = list_files(path)
-        return f"{path} ({len(files)})\n" + "\n".join(files[:120])
+        return f"{path} ({len(files)})\n" + "\n".join(files[:150])
     except Exception as exc:
-        return f"list failed: {exc}"
+        return str(exc)
 
 
-def _safe_read(path: str) -> str:
-    if _is_protected(path):
-        return f"قفل: {path}"
+def _read(path: str) -> str:
+    if _protected(path):
+        return f"قفل است: {path}"
     try:
-        content = read_file(path)
-        return content[:5000] + ("\n…truncated" if len(content) > 5000 else "")
+        c = read_file(path)
+        return c[:6000] + ("\n…" if len(c) > 6000 else "")
     except Exception as exc:
-        return f"read failed: {exc}"
+        return str(exc)
 
 
-def _search_name(query: str) -> str:
+def _search_names(q: str) -> str:
     hits = []
-    q = query.lower()
+    ql = q.lower()
     for p in PROJECT_ROOT.rglob("*"):
-        rel = p.relative_to(PROJECT_ROOT).as_posix()
-        if _is_protected(rel):
+        if _skip(p):
             continue
-        if q in p.name.lower():
+        rel = p.relative_to(PROJECT_ROOT).as_posix()
+        if _protected(rel):
+            continue
+        if ql in p.name.lower():
             hits.append(rel)
-        if len(hits) >= 40:
+        if len(hits) >= 50:
             break
-    return "\n".join(hits) or "چیزی پیدا نشد."
+    return "\n".join(hits) or "نتیجه‌ای نبود."
 
 
-def _summarize_file(path: str) -> str:
-    raw = _safe_read(path)
-    if raw.startswith("قفل") or raw.startswith("read failed"):
+def _search_text(q: str) -> str:
+    if len(q) < 2:
+        return "عبارت کوتاه است."
+    hits = []
+    ql = q.lower()
+    for p in PROJECT_ROOT.rglob("*.py"):
+        if _skip(p):
+            continue
+        rel = p.relative_to(PROJECT_ROOT).as_posix()
+        if _protected(rel):
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        if ql in text.lower():
+            line = next((ln.strip() for ln in text.splitlines() if ql in ln.lower()), "")
+            hits.append(f"{rel}: {line[:140]}")
+        if len(hits) >= 25:
+            break
+    return "\n".join(hits) or "در متن پیدا نشد."
+
+
+def _summarize(path: str) -> str:
+    raw = _read(path)
+    if raw.startswith("قفل") or "failed" in raw.lower():
         return raw
-    defs = re.findall(r"^(def |class |async def )(.+)$", raw, re.M)
-    lines = raw.splitlines()
-    head = "\n".join(lines[:25])
-    names = ", ".join((a + b).strip()[:80] for a, b in defs[:20]) or "(no defs)"
-    return f"{path}  lines={len(lines)}\nsymbols: {names}\n\n{head}"
+    defs = re.findall(r"^(?:async def|def|class)\s+\w+", raw, re.M)
+    return f"{path}  {len(raw.splitlines())} lines\n" + ", ".join(defs[:25])
 
 
 def _overview() -> str:
-    bits = [
-        f"{AGENT_NAME} {AGENT_VERSION} @8766",
-        f"python {sys.version.split()[0]}",
-        str(PROJECT_ROOT),
-    ]
-    try:
-        bits.append("branch " + git_branch())
-    except Exception as exc:
-        bits.append(str(exc))
-    try:
-        bits.append(git_status() or "git clean")
-    except Exception as exc:
-        bits.append(str(exc))
-    bits.append(_safe_list("apps/grok_local_agent"))
-    return "\n".join(bits)
+    rows = [f"{AGENT_NAME} {AGENT_VERSION} :8766", f"py {sys.version.split()[0]}", str(PROJECT_ROOT)]
+    for fn, label in ((git_branch, "branch"), (git_status, "git")):
+        try:
+            rows.append(f"{label}: {fn() or 'ok'}")
+        except Exception as exc:
+            rows.append(f"{label}: {exc}")
+    rows.append(_list("apps/grok_local_agent"))
+    return "\n".join(rows)
+
+
+def _score(key: str, words: tuple[str, ...]) -> int:
+    return sum(1 for w in words if w in key)
 
 
 def reply(message: str) -> dict:
     text = message.strip()
-    key = _norm(text)
+    key = _n(text)
     used: list[str] = []
     chunks: list[str] = []
+    path = _path_in(text)
 
-    if any(w in key for w in ("help", "کمک", "چه کار", "چیکار", "توان")):
-        used.append("help")
-        chunks.append(HELP)
-    if any(w in key for w in ("کی هستی", "who are you", "اسم", "سلامت", "health")):
-        used.append("identity")
-        chunks.append(f"من {AGENT_NAME} هستم، نسخه {AGENT_VERSION}. ایجنت اصلی را تغییر نمی‌دهم.")
-    if any(w in key for w in ("overview", "خلاصه", "وضعیت پروژه")) and "خلاصه فایل" not in key:
-        used.append("overview")
-        chunks.append(_overview())
-    if any(w in key for w in ("workspace", "پروژه", "کجا")):
-        used.append("workspace")
-        chunks.append(str(PROJECT_ROOT))
-    if "جستجو" in key or key.startswith("find ") or key.startswith("search "):
-        q = re.sub(r"^(جستجو|find|search)\s+", "", text, flags=re.I).strip()
-        used.append("search")
-        chunks.append(_search_name(q or "grok"))
-    if "خلاصه فایل" in key or key.startswith("summarize "):
-        path = _extract_path(text) or "apps/grok_local_agent/brain.py"
+    checks = [
+        (("help", "کمک", "چی بلدی", "چه کار", "چیکار", "توان"), "help", lambda: HELP),
+        (("کی هستی", "who are you", "اسمت", "سلامت", "health"), "identity",
+         lambda: f"من {AGENT_NAME} هستم، نسخه {AGENT_VERSION}. ایجنت محلی هوشمند. ChatGPT روی 8765 قفل است."),
+        (("overview", "خلاصه", "وضعیت پروژه"), "overview", _overview),
+        (("workspace", "پروژه کجاست", "کجا هست"), "workspace", lambda: str(PROJECT_ROOT)),
+    ]
+    for words, name, fn in checks:
+        if _score(key, words):
+            if name == "overview" and "خلاصه فایل" in key:
+                continue
+            used.append(name)
+            chunks.append(fn())
+
+    if _score(key, ("پیدا کن متن", "search text", "در کد", "grep")):
+        q = re.sub(r"^(پیدا کن متن|search text|grep)\s+", "", text, flags=re.I).strip() or "Farnaz"
+        used.append("content-search")
+        chunks.append(_search_text(q))
+    elif _score(key, ("جستجو", "find", "search", "پیدا")):
+        q = re.sub(r"^(جستجو|find|search|پیدا کن)\s+", "", text, flags=re.I).strip()
+        used.append("name-search")
+        chunks.append(_search_names(q or "farnaz"))
+
+    if _score(key, ("خلاصه فایل", "summarize")):
         used.append("summarize")
-        chunks.append(_summarize_file(path))
-    if any(w in key for w in ("git status",)) or key in {"git", "وضعیت گیت"}:
+        chunks.append(_summarize(path or "apps/grok_local_agent/brain.py"))
+    if _score(key, ("git status", "وضعیت گیت")) or key == "git":
         used.append("git_status")
         try:
             chunks.append(git_status() or "clean")
         except Exception as exc:
             chunks.append(str(exc))
-    if "branch" in key or "شاخه" in key:
+    if _score(key, ("branch", "شاخه")):
         used.append("git_branch")
         try:
             chunks.append(git_branch())
@@ -158,25 +180,23 @@ def reply(message: str) -> dict:
             chunks.append(git_diff() or "no diff")
         except Exception as exc:
             chunks.append(str(exc))
-    if any(w in key for w in ("بخوان", "read ", "cat ")):
-        path = _extract_path(text) or "apps/grok_local_agent/brain.py"
-        used.append("read_file")
-        chunks.append(_safe_read(path))
-    if any(w in key for w in ("list", "فهرست", "ls", "dir")) or ("فایل" in key and "خلاصه فایل" not in key):
-        path = _extract_path(text) or "apps/grok_local_agent"
-        used.append("list_files")
-        chunks.append(_safe_list(path))
+    if _score(key, ("بخوان", "read ", "cat ")):
+        used.append("read")
+        chunks.append(_read(path or "apps/grok_local_agent/brain.py"))
+    if _score(key, ("list", "فهرست", "ls", "dir")):
+        used.append("list")
+        chunks.append(_list(path or "apps/grok_local_agent"))
 
     if not chunks:
-        path = _extract_path(text)
-        if path and not _is_protected(path):
+        if path and not _protected(path):
             target = PROJECT_ROOT / path
             if target.exists():
                 used.append("auto")
-                chunks.append(_safe_list(path) if target.is_dir() else _summarize_file(path))
+                chunks.append(_list(path) if target.is_dir() else _summarize(path))
         if not chunks:
-            used.append("fallback")
-            chunks.append(f"{AGENT_NAME} پیام را گرفت.\n{text}\n\n{HELP}")
+            used.append("reason")
+            extra = _search_names(key.split()[0]) if key else ""
+            chunks.append(f"{AGENT_NAME} درخواست را تحلیل کرد.\n{text}\n\n{HELP}\n\n{extra}")
 
     content = "\n\n".join(chunks)
     try:
@@ -184,7 +204,7 @@ def reply(message: str) -> dict:
     except Exception:
         pass
     return {
-        "model": "farnaz-super-offline",
+        "model": "farnaz-v0.7-offline",
         "mode": "offline",
         "agent": AGENT_NAME,
         "version": AGENT_VERSION,
