@@ -3,7 +3,7 @@ import os
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 AGENT_NAME = "Farnaz"
-AGENT_VERSION = "2.1.0"
+AGENT_VERSION = "2.2.0"
 AGENT_HOST = "127.0.0.1"
 AGENT_PORT = 8766
 STATIC_DIR = Path(__file__).resolve().parent / "static"

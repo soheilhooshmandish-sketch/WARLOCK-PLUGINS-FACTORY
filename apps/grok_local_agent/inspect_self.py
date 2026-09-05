@@ -1,4 +1,5 @@
 import ast
+import hashlib
 from pathlib import Path
 
 from .config import SELF_DIR
@@ -12,23 +13,22 @@ def inventory() -> str:
     rows = []
     for p in _py_files():
         text = p.read_text(encoding="utf-8", errors="ignore")
-        rows.append(f"{p.name:18} {len(text.splitlines()):4} lines  {len(text):6} bytes")
+        digest = hashlib.sha1(text.encode("utf-8", errors="ignore")).hexdigest()[:8]
+        rows.append(f"{p.name:18} {len(text.splitlines()):4} ln  {digest}")
     return "Farnaz modules\n" + "\n".join(rows)
 
 
 def syntax() -> str:
-    ok = []
     bad = []
+    ok = 0
     for p in _py_files():
         src = p.read_text(encoding="utf-8", errors="ignore")
         try:
             ast.parse(src)
-            ok.append(p.name)
+            ok += 1
         except SyntaxError as exc:
             bad.append(f"{p.name}: {exc}")
-    if bad:
-        return "syntax FAIL\n" + "\n".join(bad)
-    return f"syntax OK ({len(ok)} files)"
+    return "syntax FAIL\n" + "\n".join(bad) if bad else f"syntax OK ({ok} files)"
 
 
 def imports() -> str:
@@ -40,6 +40,7 @@ def imports() -> str:
             if isinstance(n, ast.Import):
                 mods.extend(a.name for a in n.names)
             elif isinstance(n, ast.ImportFrom) and n.module:
-                mods.append(n.module)
-        rows.append(f"{p.name}: {', '.join(mods[:12])}")
-    return "imports\n" + "\n".join(rows)
+                mods.append("." * n.level + (n.module or ""))
+        internal = [m for m in mods if m.startswith(".")]
+        rows.append(f"{p.stem} -> {', '.join(internal) or '-'}")
+    return "internal deps\n" + "\n".join(rows)
