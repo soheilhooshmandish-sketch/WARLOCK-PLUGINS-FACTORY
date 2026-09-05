@@ -6,6 +6,7 @@ from . import stats as ST
 from . import tools as T
 from .ast_summary import summarize_python
 from .autogen_team import run_autogen
+from .biz import route as biz_route
 from .brain import answer as brain_answer
 from .config import MAX_REASON_STEPS, PROJECT_ROOT, SKIP_DIRS
 from .knowledge import FACTS
@@ -62,6 +63,13 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", lambda: FACTS)
+    if _has(
+        key,
+        "کسب", "business", "briefing", "مشتری", "customer", "فاکتور",
+        "quote", "قیف", "funnel", "محصول", "catalog", "warlock", "invoice",
+        "کارها", "pipeline",
+    ) or key.startswith("کار ") or key.startswith("task "):
+        add("biz", lambda: biz_route(text))
     if _has(
         key,
         "ویندوز", "windows", "clipboard", "screenshot", "process", "پروسس",
@@ -122,6 +130,7 @@ def plan(text: str) -> list[tuple[str, callable]]:
         add("count", count_py)
         add("syntax", S.syntax)
         add("lock", ST.lock_ok)
+        add("biz", lambda: biz_route("briefing"))
     if _has(key, "یادداشت‌ها", "notes"):
         add("notes", T.note_read)
     elif _has(key, "یادداشت", "note ") and len(text) > 6:
