@@ -20,6 +20,7 @@ from apps.local_agent.workspace_worker import (
 from .config import AGENT_NAME, AGENT_PORT, AGENT_VERSION, PROJECT_ROOT, STATIC_DIR, offline_mode
 from .grok_client import GrokClientError, chat as grok_chat
 from .avatar.avatar_state import State, get_state as avatar_get, set_state as avatar_set
+from .health import report as health_parts
 
 
 
@@ -97,6 +98,8 @@ def health_payload():
         "xai_key_length": len(key),
         "avatar": avatar_get().get("state"),
         "desktop": "/desktop",
+        "health": health_parts(),
+        "master": "apps/shared/FARNAZ_MASTER.md",
     }
 
 

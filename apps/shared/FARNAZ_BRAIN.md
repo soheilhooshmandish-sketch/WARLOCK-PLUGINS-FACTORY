@@ -80,7 +80,12 @@ Priority stack (local, no paid API):
 8. Backup → change → test → commit. Emergency STOP freezes click/type/workflow/build.
 9. Secrets never typed. apps/local_agent never written.
 
-Levels: READ, SAFE, MODIFY, BUILD, SYSTEM.
+## Factory 4.7
+
+DPF is default for NEW plugins. THALL stays JUCE until the probe slice is proven.
+Farnaz does not download CMake, Clang, DPF, pluginval, or NSIS.
+First proof plugin is WARLOCK Probe (gain), not THALL.
+
 
 
 Desktop panel: http://127.0.0.1:8766/desktop

@@ -26,7 +26,18 @@ Same workspace gate as the original agent:
 
 Console logs look like `GROK POST /files/write -> 200 (12ms)` plus `FILE write path=...`.
 
-## Desktop lab 4.5
+## Factory 4.7 (not a finished VST3)
+
+Architecture + detection + WARLOCK Probe generator. DPF default.
+Will not download CMake/Clang/DPF/pluginval/NSIS.
+
+```powershell
+python -m apps.grok_local_agent.factory tools
+python -m apps.grok_local_agent.factory create
+```
+
+Backup: `backup/farnaz-pre-vst3-factory-20260905`
+
 
 Vision (UIA + titles), named click, kill switch, 5 permission levels,
 auto-tone A/B/C, job memory. Still no paid API.

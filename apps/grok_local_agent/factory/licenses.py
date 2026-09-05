@@ -1,0 +1,41 @@
+"""Machine-readable license review. BLOCKED must not enter a release binary."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from ..config import PROJECT_ROOT
+
+MANIFEST = [
+    {"name": "Python", "version": "3", "homepage": "https://www.python.org", "license": "PSF", "use_type": "runtime", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "Agent runtime."},
+    {"name": "CMake", "version": "*", "homepage": "https://cmake.org", "license": "BSD-3", "use_type": "build", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "REQUIRED build."},
+    {"name": "LLVM/Clang", "version": "*", "homepage": "https://llvm.org", "license": "Apache-2.0-with-LLVM-exception", "use_type": "build", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "Preferred compiler."},
+    {"name": "GCC/g++", "version": "*", "homepage": "https://gcc.gnu.org", "license": "GPL-3 runtime exception", "use_type": "build", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "FALLBACK compiler."},
+    {"name": "DPF", "version": "*", "homepage": "https://github.com/DISTRHO/DPF", "license": "ISC", "use_type": "framework", "linked_into_binary": True, "redistributed": True, "commercial_review_status": "APPROVED", "notes": "DEFAULT new-plugin framework. Not vendored until permission to clone."},
+    {"name": "iPlug2", "version": "*", "homepage": "https://iplug2.github.io", "license": "custom-MIT-like", "use_type": "framework", "linked_into_binary": True, "redistributed": True, "commercial_review_status": "REVIEW_REQUIRED", "notes": "Secondary adapter only."},
+    {"name": "JUCE", "version": "*", "homepage": "https://juce.com", "license": "AGPL-3 / commercial", "use_type": "legacy", "linked_into_binary": True, "redistributed": True, "commercial_review_status": "REVIEW_REQUIRED", "notes": "Legacy THALL only. Not default for new plugins."},
+    {"name": "pluginval", "version": "*", "homepage": "https://github.com/Tracktion/pluginval", "license": "GPL-3.0", "use_type": "development-only", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "EXTERNAL process. Never link into WARLOCK plugins."},
+    {"name": "NSIS", "version": "3", "homepage": "https://nsis.sourceforge.io", "license": "zlib", "use_type": "packaging", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "Default installer. Inno is not default."},
+    {"name": "CPack", "version": "*", "homepage": "https://cmake.org/cmake/help/latest/module/CPack.html", "license": "BSD-3", "use_type": "packaging", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "Drives NSIS."},
+    {"name": "FFmpeg", "version": "*", "homepage": "https://ffmpeg.org", "license": "LGPL-2.1 / GPL", "use_type": "development-only", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "REVIEW_REQUIRED", "notes": "External utility. Do not statically link GPL ffmpeg into VST3."},
+    {"name": "NumPy", "version": "*", "homepage": "https://numpy.org", "license": "BSD-3", "use_type": "analysis", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "Local analysis."},
+    {"name": "SciPy", "version": "*", "homepage": "https://scipy.org", "license": "BSD-3", "use_type": "analysis", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "OPTIONAL."},
+    {"name": "pyloudnorm", "version": "*", "homepage": "https://github.com/csteinmetz1/pyloudnorm", "license": "MIT", "use_type": "analysis", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "OPTIONAL true LUFS."},
+    {"name": "Ninja", "version": "*", "homepage": "https://ninja-build.org", "license": "Apache-2.0", "use_type": "build", "linked_into_binary": False, "redistributed": False, "commercial_review_status": "APPROVED", "notes": "OPTIONAL."},
+]
+
+
+def dump() -> dict:
+    blocked = [m for m in MANIFEST if m["commercial_review_status"] == "BLOCKED"]
+    return {
+        "ok": True,
+        "count": len(MANIFEST),
+        "blocked": [m["name"] for m in blocked],
+        "items": MANIFEST,
+    }
+
+
+def write_json() -> Path:
+    path = PROJECT_ROOT / "apps" / "shared" / "licenses.json"
+    path.write_text(json.dumps(dump(), indent=2), encoding="utf-8")
+    return path

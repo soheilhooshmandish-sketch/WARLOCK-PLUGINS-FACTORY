@@ -29,7 +29,7 @@ def _wav(path: Path) -> None:
 
 
 def test_version():
-    assert AGENT_VERSION.startswith("4.5")
+    assert AGENT_VERSION.startswith("4.")
 
 
 def test_killswitch():

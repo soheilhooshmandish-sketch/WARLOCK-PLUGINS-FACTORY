@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.15)
+project(WARLOCKProbe LANGUAGES CXX)
+if(NOT DEFINED ENV{DPF_DIR} AND NOT DEFINED DPF_DIR)
+  message(FATAL_ERROR "DPF is missing. Set DPF_DIR. Farnaz will not download it.")
+endif()
+if(DEFINED ENV{DPF_DIR} AND NOT DEFINED DPF_DIR)
+  set(DPF_DIR $ENV{DPF_DIR})
+endif()
+add_subdirectory(${DPF_DIR} ${CMAKE_BINARY_DIR}/dpf)
+# DPF plugins typically use Makefile. This CMake is a gate: fail loud if DPF is absent.

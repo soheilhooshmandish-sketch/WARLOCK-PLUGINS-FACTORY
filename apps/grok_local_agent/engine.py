@@ -72,6 +72,12 @@ def plan(text: str) -> list[tuple[str, callable]]:
         if name not in {n for n, _ in steps}:
             steps.append((name, fn))
 
+    from .commands import handle as cmd_handle
+    hit = cmd_handle(text)
+    if hit is not None:
+        add("command", lambda: __import__("json").dumps(hit, ensure_ascii=False, indent=2)[:4000])
+        return steps
+
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", lambda: FACTS)
     if _has(
@@ -119,6 +125,9 @@ def plan(text: str) -> list[tuple[str, callable]]:
     if _has(key, "job", "شغل", "مرحله thall", "checkpoint job"):
         from .jobs import current
         add("jobs", lambda: json.dumps(current(), ensure_ascii=False, indent=2))
+    if _has(key, "factory", "فکتوری", "vst3 factory", "pluginval", "toolchain"):
+        from .factory.toolchain import detect as factory_detect
+        add("factory", lambda: json.dumps(factory_detect(), indent=2)[:4000])
     if _has(key, "kill switch", "emergency", "توقف اضطراری"):
         from .killswitch import halt
         add("kill", lambda: json.dumps(halt("engine"), ensure_ascii=False))

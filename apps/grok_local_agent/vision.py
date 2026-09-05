@@ -34,6 +34,7 @@ foreach ($b in $btns) {
     y = [int]($r.Y + $r.Height/2)
     w = [int]$r.Width
     h = [int]$r.Height
+    confidence = 0.94
   }
   $n++
 }
@@ -111,12 +112,27 @@ def find_control(name: str) -> dict | None:
     want = (name or "").strip().lower()
     if not want:
         return None
+    best = None
+    score = 0.0
     for c in _controls():
         label = str(c.get("name") or "").lower()
-        if want in label or label in want:
+        if label == want:
+            c = dict(c)
+            c["confidence"] = 0.97
             return c
+        if want in label or label in want:
+            s = 0.85 if want in label else 0.72
+            if s > score:
+                best, score = dict(c), s
+    if best:
+        best["confidence"] = score
+        return best
     for prof in PROFILES.values():
         alias = (prof.get("click") or {}).get(want)
-        if alias:
-            return find_control(alias)
+        if alias and alias.lower() != want:
+            hit = find_control(alias)
+            if hit:
+                hit["confidence"] = min(float(hit.get("confidence") or 0.8), 0.88)
+                hit["alias_of"] = alias
+                return hit
     return None

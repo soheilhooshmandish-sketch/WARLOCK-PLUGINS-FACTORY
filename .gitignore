@@ -32,6 +32,9 @@ htmlcov/
 
 # Farnaz local state (avatar settings, sqlite, tts cache)
 apps/grok_local_agent/state/
+apps/grok_local_agent/factory/probe/build/
+output/factory/
+output/WARLOCK-Probe/
 tmp/
 temp/agent.log
 .warlock/
