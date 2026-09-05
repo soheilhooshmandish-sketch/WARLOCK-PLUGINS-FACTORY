@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 
+from . import inspect_self as S
 from . import tools as T
 from .ast_summary import summarize_python
 from .config import MAX_REASON_STEPS, PROJECT_ROOT, SKIP_DIRS
@@ -54,6 +55,13 @@ def plan(text: str) -> list[tuple[str, callable]]:
         add("help", lambda: FACTS)
     if _has(key, "کی هستی", "who are you", "اسمت", "سلامت", "health"):
         add("id", lambda: FACTS)
+        add("syntax", S.syntax)
+    if _has(key, "ماژول", "module", "inventory", "خودت"):
+        add("inventory", S.inventory)
+        add("syntax", S.syntax)
+        add("imports", S.imports)
+    if _has(key, "syntax", "خطا"):
+        add("syntax", S.syntax)
     if _has(key, "مسیرها", "routes", "endpoint"):
         add("routes", api_routes)
     if _has(key, "ایندکس", "index", "ساختار"):
@@ -62,6 +70,7 @@ def plan(text: str) -> list[tuple[str, callable]]:
         add("runtime", T.runtime)
         add("list-self", lambda: T.list_dir("apps/grok_local_agent"))
         add("count", count_py)
+        add("syntax", S.syntax)
     if _has(key, "یادداشت‌ها", "notes"):
         add("notes", T.note_read)
     elif _has(key, "یادداشت", "note ") and len(text) > 6:
@@ -96,6 +105,8 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if not steps:
         add("facts", lambda: FACTS)
+        add("syntax", S.syntax)
+        add("inventory", S.inventory)
         add("index", T.index_top)
         words = [w for w in key.split() if len(w) > 3][:3]
         if words:
