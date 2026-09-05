@@ -22,6 +22,9 @@ def _mem(user: str, reply: str) -> None:
 def reply(message: str) -> dict:
     text = message.strip()
     used, chunks = run(text)
+    short = any(w in text.lower() for w in ("کوتاه", "short", "voice"))
+    if short:
+        chunks = [c[:280] for c in chunks[:2]]
     prog = bump(len(used))
     header = f"{AGENT_NAME} {AGENT_VERSION}  pele {prog.get('pele', 0)}/{PELE_CAP}"
     content = header + "\n\n" + "\n\n".join(chunks)
@@ -30,13 +33,14 @@ def reply(message: str) -> dict:
     except Exception:
         pass
     return {
-        "model": "farnaz-v2-1000step",
+        "model": "farnaz-v2.2-offline",
         "mode": "offline",
         "agent": AGENT_NAME,
         "version": AGENT_VERSION,
         "pele": prog.get("pele", 0),
         "pele_cap": PELE_CAP,
         "tools": used,
+        "short": short,
         "content": content,
         "raw_id": "farnaz-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
     }
