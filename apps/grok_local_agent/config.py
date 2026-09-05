@@ -2,8 +2,8 @@ from pathlib import Path
 import os
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-AGENT_NAME = "Warlock Grok Agent"
-AGENT_VERSION = "0.3.6"
+AGENT_NAME = "Farnaz"
+AGENT_VERSION = "0.3.7"
 AGENT_HOST = "127.0.0.1"
 AGENT_PORT = 8766
 STATIC_DIR = Path(__file__).resolve().parent / "static"
