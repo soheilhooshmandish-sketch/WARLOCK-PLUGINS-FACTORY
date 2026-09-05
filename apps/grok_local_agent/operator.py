@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from .config import STATE_DIR
+from .killswitch import guard, halt
 from .windows import _ps, screenshot, start_app, APPS
 
 CAPS = ("see", "apps", "click", "type", "launch", "workflow")
@@ -124,6 +125,9 @@ def apps() -> dict:
 
 
 def click(x: int, y: int, button: str = "left") -> dict:
+    stop = guard()
+    if stop:
+        return {"ok": False, "error": stop}
     err = require("click")
     if err:
         return {"ok": False, "error": err}
@@ -150,6 +154,9 @@ def click(x: int, y: int, button: str = "left") -> dict:
 
 
 def type_text(text: str) -> dict:
+    stop = guard()
+    if stop:
+        return {"ok": False, "error": stop}
     err = require("type")
     if err:
         return {"ok": False, "error": err}
@@ -198,6 +205,9 @@ def run_step(step: dict) -> dict:
 
 
 def workflow(steps: list) -> dict:
+    stop = guard()
+    if stop:
+        return {"ok": False, "error": stop}
     err = require("workflow")
     if err:
         return {"ok": False, "error": err}
@@ -218,6 +228,19 @@ def workflow(steps: list) -> dict:
 
 def route(text: str) -> str:
     key = text.lower()
+    if any(w in key for w in ("emergency", "kill switch", "توقف اضطراری", "بایست فوری")):
+        return json.dumps(halt("chat"), ensure_ascii=False)
+    if any(w in key for w in ("روی ", "click ", "کلیک")):
+        from .smart_ui import click_named
+        name = text
+        for prefix in ("روی ", "click ", "کلیک کن روی ", "کلیک "):
+            if prefix in key:
+                name = text.split(prefix, 1)[-1].strip(" .")
+                break
+        return json.dumps(click_named(name), ensure_ascii=False)
+    if any(w in key for w in ("ببین صفحه", "vision", "چه چیزی روی", "scene")):
+        from .vision import scene
+        return json.dumps(scene(), ensure_ascii=False)
     if any(w in key for w in ("revoke all", "پس بگیر همه", "لغو همه")):
         return json.dumps(revoke(), ensure_ascii=False)
     m = re.search(r"(grant|مجوز)\s+(\w+)", key)

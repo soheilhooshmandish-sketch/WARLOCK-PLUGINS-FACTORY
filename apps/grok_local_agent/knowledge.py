@@ -5,7 +5,11 @@ FACTS = f"""{AGENT_NAME} نسخه {AGENT_VERSION}
 نقش: مغز محلی 127.0.0.1:{AGENT_PORT} — Free/OSS First، بدون API پولی
 قفل: ChatGPT/apps/local_agent روی 8765 هرگز تغییر نمی‌کند
 قانون: Local Brain → ابزار رایگان → DSP → JUCE → VST3
+بینایی: UI Automation + عنوان پنجره + اسکرین، بدون API پولی
+کلیک هوشمند: «روی Build کلیک کن» نه x,y
+سطوح: READ SAFE MODIFY BUILD SYSTEM — default deny
+Kill Switch: توقف فوری اتوماسیون
 پریست: THALL DJENT DOOM BLACK_METAL CLEAN_AMBIENT MODERN_METAL
-اپراتور: see apps click type launch workflow (default deny)
-چک‌پوینت: SQLite  حافظه  Git بکاپ
+تون خودکار: A/B/C + JSON برای VST3
+جاب: start analyze design build test confirm done
 """

@@ -124,6 +124,11 @@
     api("/avatar/stop", {});
     applyState("idle", "Stopped.");
   };
+  document.getElementById("kill").onclick = async function () {
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    await api("/operator/stop", {});
+    applyState("warning", "EMERGENCY STOP. Automation frozen.");
+  };
   document.getElementById("mute").onclick = async function () {
     const cur = await api("/avatar/config");
     const muted = !cur.muted;
@@ -182,4 +187,10 @@
   })();
 
   applyState("idle", "فرناز اینجاست. نگه دارید و حرف بزنید.");
+  api("/operator").then(function (d) {
+    if (d && d.job) {
+      document.getElementById("task").textContent = (d.job.title || "JOB") + " · " + (d.job.stage || "start");
+    }
+    if (d && d.halted) applyState("warning", "EMERGENCY STOP");
+  }).catch(function () {});
 })();

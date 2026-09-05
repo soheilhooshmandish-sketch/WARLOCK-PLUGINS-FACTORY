@@ -66,7 +66,22 @@ Capabilities (grant with confirm=true, 1-120 minutes):
 - launch — notepad / calc / explorer / paint
 - workflow — up to 8 steps of the above
 
-Avatar = face. Voice = speech. Brain = intelligence. Never a second AI.
+## Farnaz 4.5 desktop lab
+
+Priority stack (local, no paid API):
+
+1. Vision = UI Automation + window titles + screenshot (not a cloud VLM).
+2. Smart click = find control by name ("Build"), then existing click().
+3. Voice/PTT/avatar already on /desktop.
+4. Audio analysis = peak/RMS/LUFS-approx/bands → Auto Tone A/B/C.
+5. JUCE preset JSON in agent state/presets.
+6. Build reads compiler errors; will not auto-edit without MODIFY.
+7. Jobs persist stages: start → analyze → design → build → test → confirm → done.
+8. Backup → change → test → commit. Emergency STOP freezes click/type/workflow/build.
+9. Secrets never typed. apps/local_agent never written.
+
+Levels: READ, SAFE, MODIFY, BUILD, SYSTEM.
+
 
 Desktop panel: http://127.0.0.1:8766/desktop
 States: idle, listening, thinking, speaking, working, success, warning, error.

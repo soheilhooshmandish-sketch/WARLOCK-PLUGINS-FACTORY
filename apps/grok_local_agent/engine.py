@@ -113,6 +113,16 @@ def plan(text: str) -> list[tuple[str, callable]]:
             "mic": mic_status(),
             "tts": VoiceEngine().list_backends(),
         }, ensure_ascii=False, indent=2))
+    if _has(key, "auto tone", "تون", "a/b", "تحلیل گیتار", "lufs", "rms"):
+        from .tone import propose
+        add("tone", lambda: json.dumps(propose(None, "THALL"), ensure_ascii=False, indent=2)[:4000])
+    if _has(key, "job", "شغل", "مرحله thall", "checkpoint job"):
+        from .jobs import current
+        add("jobs", lambda: json.dumps(current(), ensure_ascii=False, indent=2))
+    if _has(key, "kill switch", "emergency", "توقف اضطراری"):
+        from .killswitch import halt
+        add("kill", lambda: json.dumps(halt("engine"), ensure_ascii=False))
+
 
     brain_keys = (
         "interrupt", "checkpointer", "reducer", "add_messages", "selector",

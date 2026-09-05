@@ -44,6 +44,8 @@ header b { letter-spacing: .2em; }
 .row { display: flex; gap: 6px; padding: 0 10px 8px; }
 .row button { flex: 1; height: 32px; font-size: 10px; letter-spacing: .06em; }
 #ptt { border-color: var(--gold); color: var(--gold); }
+#kill { border-color: var(--blood); color: #f3c; }
+#task { margin: 0 12px 8px; font-size: 11px; letter-spacing: .08em; color: var(--gold); }
 #ptt.live { background: #1e3a22; color: var(--ok); border-color: var(--ok); }
 form { display: flex; gap: 6px; padding: 0 10px 10px; }
 form input, #token {

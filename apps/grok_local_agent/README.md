@@ -26,7 +26,21 @@ Same workspace gate as the original agent:
 
 Console logs look like `GROK POST /files/write -> 200 (12ms)` plus `FILE write path=...`.
 
-## Desktop avatar (4.4)
+## Desktop lab 4.5
+
+Vision (UIA + titles), named click, kill switch, 5 permission levels,
+auto-tone A/B/C, job memory. Still no paid API.
+
+```powershell
+python -m apps.grok_local_agent.run_agent
+# http://127.0.0.1:8766/desktop
+# GET  /operator/vision
+# POST /operator/click_named  {"name":"Build"}
+# POST /operator/stop
+```
+
+Backup branch: `backup/farnaz-pre-vision-20260905-2254`
+
 
 Compact floating face + PTT. Not a second brain.
 
