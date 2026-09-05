@@ -1,10 +1,8 @@
-"""AutoGen-style candidate_func: shrink who the selector may pick.
+"""AutoGen-style candidate_func: shrink who the selector may pick."""
 
-If it returns one name, speak that agent (no LLM needed).
-If it returns [] , the turn is skipped / terminated.
-"""
 from .policy import is_locked
-from .selector import ROLES
+
+ROLES = ("scout", "analyst", "fleet", "reviewer")
 
 
 def candidate_func(task: str, spoken: list[str]) -> list[str]:

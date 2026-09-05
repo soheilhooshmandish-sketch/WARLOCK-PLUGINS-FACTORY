@@ -1,16 +1,11 @@
-"""SelectorGroupChat strategies without an LLM picker.
-
-AutoGen SelectorGroupChat usually asks a model: who speaks next?
-Offline Farnaz uses deterministic selectors instead.
-"""
+"""SelectorGroupChat strategies without an LLM picker."""
 from . import inspect_self as S
 from . import stats as ST
 from . import tools as T
+from .candidates import ROLES, candidate_func
 from .config import AUTOGEN_MAX_TURNS
 from .peers import fleet
 from .policy import is_locked
-
-ROLES = ("scout", "analyst", "fleet", "reviewer")
 
 
 def _scout(task: str) -> str:
@@ -78,17 +73,18 @@ def run_selector(task: str, strategy: str = "keyword") -> str:
     last = None
     spoken: list[str] = []
     for _ in range(AUTOGEN_MAX_TURNS):
-        name = select_next(task, last, strategy)
-        if strategy == "keyword" and name in spoken:
+        pool = candidate_func(task, spoken)
+        if not pool:
+            lines.append("[terminate] candidate_func returned []")
             break
+        picked = select_next(task, last, strategy)
+        name = picked if picked in pool else pool[0]
         spoken.append(name)
         body = RUN[name](task)
-        lines.append(f"[{name}] {body}")
+        lines.append(f"[{name}] pool={pool}\n{body}")
         last = name
         if "APPROVE" in body:
             break
-        if strategy == "roundrobin":
-            continue
         if strategy == "keyword":
             break
     return "\n\n".join(lines)
