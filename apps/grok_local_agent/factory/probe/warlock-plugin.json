@@ -1,0 +1,19 @@
+{
+  "name": "WARLOCK Factory Test",
+  "vendor": "WARLOCK Plugins",
+  "framework": "DPF",
+  "formats": [
+    "VST3"
+  ],
+  "version": "0.1.0",
+  "category": "Utility",
+  "oversampling": 1,
+  "presets": true,
+  "installer": "NSIS",
+  "unique_id": "WPRB",
+  "parameter_ids": [
+    "GAIN",
+    "OUTPUT",
+    "BYPASS"
+  ]
+}

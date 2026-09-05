@@ -26,7 +26,18 @@ Same workspace gate as the original agent:
 
 Console logs look like `GROK POST /files/write -> 200 (12ms)` plus `FILE write path=...`.
 
-## Factory 4.7 (not a finished VST3)
+## Factory 4.8 — not a finished VST3
+
+WARLOCK Factory Test: GAIN → tanh clip → OUTPUT + BYPASS.
+Gates block RELEASE until a real `.vst3`, pluginval, hosted audio test, and NSIS installer exist.
+
+```powershell
+python -m apps.grok_local_agent.factory doctor
+python -m apps.grok_local_agent.factory create
+```
+
+Backup: `backup/farnaz-pre-factory-20260905-2308`
+
 
 Architecture + detection + WARLOCK Probe generator. DPF default.
 Will not download CMake/Clang/DPF/pluginval/NSIS.

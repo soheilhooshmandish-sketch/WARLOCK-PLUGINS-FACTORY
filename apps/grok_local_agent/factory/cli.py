@@ -41,13 +41,16 @@ def main(argv: list[str] | None = None) -> int:
     elif cmd == "rollback":
         job = latest()
         out = set_state(job["job_id"], "ROLLED_BACK") if job else {"ok": False, "error": "no job"}
+    elif cmd == "doctor":
+        from .doctor import report
+        out = report()
     elif cmd == "licenses":
         out = licenses()
     elif cmd == "backup":
         out = snapshot("cli")
     else:
         out = {"ok": False, "error": "unknown command", "cmds": [
-            "status", "tools", "create", "analyze", "build", "validate", "package", "resume", "rollback",
+            "status", "tools", "doctor", "create", "analyze", "build", "validate", "package", "resume", "rollback",
         ]}
     print(json.dumps(out, ensure_ascii=False, indent=2)[:8000])
     return 0 if out.get("ok", True) is not False else 1

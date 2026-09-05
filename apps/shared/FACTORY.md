@@ -1,12 +1,20 @@
 # WARLOCK Plugin Factory
 
 ```
-FARNAZ → DSP spec → DPF → CMAKE → CLANG → VST3 → PLUGINVAL → TEST → CPACK → NSIS
+FARNAZ → AUDIO → DSP → PLUGINSPEC → DPF → CMAKE → CLANG → VST3 → PLUGINVAL → TEST → CPACK → NSIS
 ```
 
-Default framework: **DPF**. iPlug2 is secondary. JUCE is legacy (existing THALL only).
+Default: **DPF**. iPlug2 secondary. JUCE legacy (THALL only, no auto-migrate).
 
-Farnaz will **not** download or install CMake, LLVM, DPF, pluginval, or NSIS without explicit permission.
+Finished VST3 must run with **no** Farnaz, Grok, ChatGPT, Python, or internet.
+
+`farnaz doctor` inspects; it does not install.
+
+Release requires all gates:
+BUILD + PLUGINVAL + AUDIO (hosted, not Python model) + REGRESSION + LICENSE + PACKAGE.
+
+Python golden DSP is a model, **not** AUDIO_TEST_PASS.
+
 
 ## Tool roles
 

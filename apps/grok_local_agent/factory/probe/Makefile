@@ -1,6 +1,5 @@
 #!/usr/bin/make -f
-# Requires DPF next to this folder or DPF_DIR.
-NAME = WARLOCKProbe
+NAME = WARLOCKFactoryTest
 FILES_DSP = ProbeDSP.cpp
 include $(DPF_DIR)/Makefile.plugins.mk
 TARGETS += vst3

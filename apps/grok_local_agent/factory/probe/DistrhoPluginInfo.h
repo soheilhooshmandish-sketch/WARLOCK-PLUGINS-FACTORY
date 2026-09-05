@@ -1,6 +1,6 @@
 #pragma once
-#define DISTRHO_PLUGIN_NAME "WARLOCK Probe"
-#define DISTRHO_PLUGIN_URI "https://warlock.audio/plugins/probe"
+#define DISTRHO_PLUGIN_NAME "WARLOCK Factory Test"
+#define DISTRHO_PLUGIN_URI "https://warlock.audio/plugins/factory-test"
 #define DISTRHO_PLUGIN_HAS_UI 0
 #define DISTRHO_PLUGIN_IS_RT_SAFE 1
 #define DISTRHO_PLUGIN_NUM_INPUTS 2
