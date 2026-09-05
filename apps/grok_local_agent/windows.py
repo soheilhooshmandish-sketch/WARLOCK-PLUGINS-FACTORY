@@ -22,13 +22,12 @@ APPS = {
     "نقاشی": "mspaint.exe",
 }
 DENY_KILL = {
-    "csrss", "lsass", "winlogon", "services", "smss", "system", "idle",
-    "svchost", "csrss.exe", "lsass.exe",
+    "csrss", "lsass", "winlogon", "services", "smss", "system", "idle", "svchost",
 }
 FORBID_PS = (
     "shutdown", "stop-computer", "restart-computer", "format-volume",
     "remove-item -recurse", "irm ", "iwr ", "invoke-webrequest",
-    "invoke-expression", "iex ", "reg delete", "net user", "mimikatz",
+    "invoke-expression", "iex ", "reg delete", "net user",
     "apps/local_agent", "stop-process -name python",
 )
 
@@ -128,11 +127,11 @@ def open_folder(raw: str) -> str:
     target = Path(raw.strip() or str(PROJECT_ROOT))
     if not target.exists():
         return f"missing: {target}"
-    rel = ""
+    rel = str(target)
     try:
         rel = target.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
     except Exception:
-        rel = str(target)
+        pass
     if is_locked(rel):
         return "POLICY DENY original agent folder"
     subprocess.Popen(["explorer.exe", str(target)])
@@ -149,14 +148,13 @@ def kill(name: str, text: str) -> str:
 
 
 def help_win() -> str:
-    return (
-        "Windows tools (127.0.0.1 only)\n"
-        "سیستم | پروسس | دیسک | کلیپ‌بورد | اسکرین
-"
-        "باز کن notepad | calc | explorer | paint\n"
-        "نوتیف متن... | کلیپ بگذار ...\n"
-        "kill NAME تأیید — shutdown/format never"
-    )
+    return "\n".join([
+        "Windows tools (127.0.0.1 only)",
+        "سیستم | پروسس | دیسک | کلیپ‌بورد | اسکرین",
+        "باز کن notepad | calc | explorer | paint",
+        "نوتیف متن... | کلیپ بگذار ...",
+        "kill NAME تأیید — shutdown/format never",
+    ])
 
 
 def route(text: str) -> str:
@@ -187,7 +185,7 @@ def route(text: str) -> str:
     for name in APPS:
         if name in key and any(w in key for w in ("باز", "start", "open", "بکشا", "شروع")):
             return start_app(name)
-    if any(w in key for w in ("باز کن پوشه", "open folder", "explorer")):
+    if any(w in key for w in ("باز کن پوشه", "open folder")):
         return open_folder(PROJECT_ROOT.as_posix())
     if any(w in key for w in ("سیستم", "whoami", "hostname", "windows", "ویندوز")):
         return info() + "\n\n" + help_win()
