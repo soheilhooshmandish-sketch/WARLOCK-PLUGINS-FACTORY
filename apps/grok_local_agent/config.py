@@ -3,10 +3,11 @@ import os
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 AGENT_NAME = "Farnaz"
-AGENT_VERSION = "0.5.0"
+AGENT_VERSION = "0.6.0"
 AGENT_HOST = "127.0.0.1"
 AGENT_PORT = 8766
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+STATE_DIR = Path(__file__).resolve().parent / "state"
 PROTECTED_PATHS = ("apps/local_agent",)
 
 XAI_API_BASE = os.getenv("XAI_API_BASE", "https://api.x.ai/v1").rstrip("/")
