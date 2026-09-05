@@ -44,6 +44,9 @@ def main(argv: list[str] | None = None) -> int:
     elif cmd == "doctor":
         from .doctor import report
         out = report()
+    elif cmd == "gate":
+        from .release_gate import evaluate
+        out = evaluate()
     elif cmd == "licenses":
         out = licenses()
     elif cmd == "backup":

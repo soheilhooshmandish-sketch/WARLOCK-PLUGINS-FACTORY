@@ -108,8 +108,8 @@ def test_gates_block_without_artifacts():
     from apps.grok_local_agent.factory.gates import evaluate
     g = evaluate(None, None, {"ok": True, "source": "python-model"}, None, True)
     assert g["ok"] is False
-    assert "BUILD_PASS" in g["blocked"]
-    assert "AUDIO_TEST_PASS" in g["blocked"]
+    assert "BUILD" in g["blocked"] or "BUILD_PASS" in g["blocked"]
+    assert "AUDIO_TEST" in g["blocked"] or "AUDIO_TEST_PASS" in g["blocked"]
 
 
 def test_checksum_missing_is_not_success():

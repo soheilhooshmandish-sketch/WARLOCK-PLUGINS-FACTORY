@@ -1,26 +1,23 @@
-"""Release gates. A script is not a pass."""
-from __future__ import annotations
-
+"""Compat wrapper around release_gate."""
 from pathlib import Path
+
+from .release_gate import evaluate as _eval
+from .release_gate import from_artifacts
 
 
 def evaluate(vst3: Path | None, pluginval: dict | None, audio: dict | None, installer: Path | None, license_ok: bool) -> dict:
-    exists = bool(vst3 and Path(vst3).exists())
-    pv = bool(pluginval and pluginval.get("ok"))
-    audio_pass = bool(audio and audio.get("ok") and audio.get("source") not in {None, "python-model"})
-    inst = bool(installer and Path(installer).exists())
-    gates = {
-        "BUILD_PASS": exists,
-        "PLUGINVAL_PASS": pv,
-        "AUDIO_TEST_PASS": audio_pass,
-        "REGRESSION_PASS": False,
-        "LICENSE_PASS": license_ok,
-        "PACKAGE_PASS": inst,
-    }
-    release = all(gates.values())
+    g = from_artifacts(vst3, pluginval, audio, installer)
     return {
-        "ok": release,
-        "channel": "RELEASE" if release else "DEV",
-        "gates": gates,
-        "blocked": [k for k, v in gates.items() if not v],
+        "ok": g["ok"],
+        "channel": "RELEASE" if g["ok"] else "DEV",
+        "gates": {
+            "BUILD_PASS": g["gates"]["BUILD"] == "PASS",
+            "PLUGINVAL_PASS": g["gates"]["PLUGIN_VALIDATION"] == "PASS",
+            "AUDIO_TEST_PASS": g["gates"]["AUDIO_TEST"] == "PASS",
+            "REGRESSION_PASS": g["gates"]["GOLDEN_AUDIO"] == "PASS",
+            "LICENSE_PASS": license_ok and g["gates"]["LICENSE"] != "FAIL",
+            "PACKAGE_PASS": g["gates"]["PACKAGE"] == "PASS",
+        },
+        "blocked": g["blocked"],
+        "decision": g["decision"],
     }

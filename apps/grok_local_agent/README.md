@@ -26,7 +26,11 @@ Same workspace gate as the original agent:
 
 Console logs look like `GROK POST /files/write -> 200 (12ms)` plus `FILE write path=...`.
 
-## Factory 4.8 — not a finished VST3
+## Factory 4.9 — five engineering systems, no VST3 yet
+
+PluginSpec validator · realtime scanner · golden audio · host matrix · release gate.
+`python -m apps.grok_local_agent.factory gate` → RELEASE_BLOCKED until real artifacts exist.
+
 
 WARLOCK Factory Test: GAIN → tanh clip → OUTPUT + BYPASS.
 Gates block RELEASE until a real `.vst3`, pluginval, hosted audio test, and NSIS installer exist.

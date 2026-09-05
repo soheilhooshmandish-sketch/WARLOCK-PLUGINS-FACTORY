@@ -34,7 +34,7 @@ htmlcov/
 apps/grok_local_agent/state/
 apps/grok_local_agent/factory/probe/build/
 output/factory/
-output/WARLOCK-Probe/
+apps/grok_local_agent/factory/golden_refs/*_delta.json
 tmp/
 temp/agent.log
 .warlock/
