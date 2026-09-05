@@ -6,6 +6,7 @@ from . import stats as ST
 from . import tools as T
 from .ast_summary import summarize_python
 from .autogen_team import run_autogen
+from .brain import answer as brain_answer
 from .config import MAX_REASON_STEPS, PROJECT_ROOT, SKIP_DIRS
 from .knowledge import FACTS
 from .orchestrator import conductor
@@ -60,6 +61,14 @@ def plan(text: str) -> list[tuple[str, callable]]:
 
     if _has(key, "کمک", "help", "چی بلدی", "چه کار", "چیکار"):
         add("help", lambda: FACTS)
+    brain_keys = (
+        "interrupt", "checkpointer", "reducer", "add_messages", "selector",
+        "candidate", "hitl", "crewai", "langgraph", "autogen", "oversight",
+        "pele", "xai", "grok-4", "توضیح", "explain", "چیست", "یعنی", "how does",
+        "what is", "versioning", "messagesstate",
+    )
+    if _has(key, *brain_keys):
+        add("brain", lambda: brain_answer(text))
     if _has(key, "منبع", "منابع", "source", "sources", "citation", "docs"):
         topic = None
         for t in ("autogen", "crewai", "langgraph", "xai", "oversight"):
@@ -67,9 +76,9 @@ def plan(text: str) -> list[tuple[str, callable]]:
                 topic = t
                 break
         add("sources", lambda: list_sources(topic))
-    if _has(key, "autogen", "roundrobin", "groupchat") and "selector" not in key:
+    if _has(key, "autogen", "roundrobin", "groupchat") and "selector" not in key and "explain" not in key and "توضیح" not in key:
         add("autogen", lambda: run_autogen(text))
-    if _has(key, "selector", "انتخابگر", "@scout", "@analyst", "@reviewer", "@fleet"):
+    if _has(key, "selector", "انتخابگر", "@scout", "@analyst", "@reviewer", "@fleet") and "explain" not in key:
         strategy = "mention" if "@" in text else ("roundrobin" if "round" in key else "keyword")
         add("selector", lambda: run_selector(text, strategy))
     if _has(key, "ارکستر", "orchestrat", "fleet", "چند ایجنت", "multi-agent", "agents"):
@@ -137,6 +146,7 @@ def plan(text: str) -> list[tuple[str, callable]]:
         add("ws", T.runtime)
 
     if not steps:
+        add("brain", lambda: brain_answer(text))
         add("facts", lambda: FACTS)
         add("lock", ST.lock_ok)
         add("syntax", S.syntax)
