@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Warlock Grok Agent</title>
+  <style>
+    :root {
+      --bg: #070708;
+      --panel: #121114;
+      --line: #2a2420;
+      --gold: #c4a574;
+      --blood: #8a1f24;
+      --ivory: #e8dfd0;
+      --mute: #8b8174;
+      --ok: #6fbf73;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background:
+        radial-gradient(1200px 500px at 80% -10%, #2a1214 0%, transparent 55%),
+        var(--bg);
+      color: var(--ivory);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(10, 10, 12, 0.9);
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .sub { color: var(--mute); font-size: 12px; margin-top: 4px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--mute);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blood); }
+    .dot.ok { background: var(--ok); }
+    main {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: calc(100vh - 74px);
+    }
+    aside, section {
+      padding: 20px;
+    }
+    aside {
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+    }
+    label { display: block; font-size: 11px; color: var(--gold); margin: 12px 0 6px; }
+    input, textarea, button {
+      width: 100%;
+      font: inherit;
+      color: var(--ivory);
+      background: #0c0c0e;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    input, textarea { padding: 10px 12px; }
+    button {
+      cursor: pointer;
+      padding: 10px 12px;
+      background: linear-gradient(#9a2a2e, var(--blood));
+      border-color: #5c1619;
+      margin-top: 10px;
+    }
+    button.ghost { background: transparent; color: var(--gold); border-color: var(--gold); }
+    #log {
+      height: calc(100vh - 240px);
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      background: #0b0b0d;
+    }
+    .msg { margin: 0 0 14px; line-height: 1.55; white-space: pre-wrap; }
+    .msg.user { color: var(--gold); }
+    .msg.agent { color: var(--ivory); }
+    .msg.err { color: #e07070; }
+    #composer { display: flex; gap: 8px; margin-top: 12px; }
+    #composer textarea { min-height: 64px; resize: vertical; }
+    #composer button { width: 120px; margin: 0; }
+    #files { font-size: 12px; color: var(--mute); max-height: 220px; overflow: auto; }
+    @media (max-width: 800px) {
+      main { grid-template-columns: 1fr; }
+      aside { border-left: 0; border-top: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Warlock Grok</h1>
+      <div class="sub">ایجنت محلی ۸۷۶۶ — ایجنت اصلی ChatGPT دست‌نخورده است</div>
+    </div>
+    <div class="badge"><span class="dot" id="dot"></span><span id="status">در حال اتصال…</span></div>
+  </header>
+  <main>
+    <aside>
+      <label>توکن ایجنت</label>
+      <input id="token" type="password" placeholder="WARLOCK_AGENT_TOKEN" />
+      <button class="ghost" id="save">ذخیره در این نشست</button>
+      <label>مسیر فایل</label>
+      <input id="path" value="apps/grok_local_agent" />
+      <button class="ghost" id="list">فهرست فایل</button>
+      <div id="files"></div>
+    </aside>
+    <section>
+      <div id="log"></div>
+      <div id="composer">
+        <textarea id="msg" placeholder="پیام آفلاین…"></textarea>
+        <button id="send">ارسال</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    const tokenEl = document.getElementById("token");
+    const logEl = document.getElementById("log");
+    const filesEl = document.getElementById("files");
+    tokenEl.value = sessionStorage.getItem("grok_agent_token") || "";
+
+    function add(cls, text) {
+      const p = document.createElement("p");
+      p.className = "msg " + cls;
+      p.textContent = text;
+      logEl.appendChild(p);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function headers() {
+      const tok = tokenEl.value.trim();
+      return tok ? { "Authorization": "Bearer " + tok, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+    }
+
+    async function refreshHealth() {
+      try {
+        const r = await fetch("/health");
+        const d = await r.json();
+        document.getElementById("dot").className = "dot ok";
+        document.getElementById("status").textContent =
+          d.version + " · " + (d.offline ? "offline" : "live") + " · " + d.status;
+      } catch {
+        document.getElementById("dot").className = "dot";
+        document.getElementById("status").textContent = "قطع";
+      }
+    }
+
+    document.getElementById("save").onclick = () => {
+      sessionStorage.setItem("grok_agent_token", tokenEl.value.trim());
+      add("agent", "توکن در این نشست ذخیره شد.");
+    };
+
+    document.getElementById("list").onclick = async () => {
+      const path = document.getElementById("path").value.trim() || ".";
+      const r = await fetch("/files/list", { method: "POST", headers: headers(), body: JSON.stringify({ path }) });
+      const d = await r.json();
+      if (!r.ok) { add("err", d.detail || "list failed"); return; }
+      filesEl.textContent = (d.files || []).join("\n");
+    };
+
+    async function send() {
+      const message = document.getElementById("msg").value.trim();
+      if (!message) return;
+      add("user", message);
+      document.getElementById("msg").value = "";
+      const r = await fetch("/grok/chat", { method: "POST", headers: headers(), body: JSON.stringify({ message }) });
+      const d = await r.json();
+      if (!r.ok) { add("err", typeof d.detail === "string" ? d.detail : JSON.stringify(d.detail)); return; }
+      add("agent", (d.mode ? "[" + d.mode + "] " : "") + (d.content || ""));
+    }
+    document.getElementById("send").onclick = send;
+    document.getElementById("msg").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+    });
+    refreshHealth();
+    setInterval(refreshHealth, 8000);
+  </script>
+</body>
+</html>
