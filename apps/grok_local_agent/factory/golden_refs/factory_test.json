@@ -1,0 +1,13 @@
+{
+  "reason": "unit-test explicit",
+  "metrics": {
+    "peak": 0.761588,
+    "rms": 0.58188,
+    "dc": 0.085236,
+    "n": 256,
+    "clip": false,
+    "loudness_approx_rms_db": -4.703,
+    "loudness_label": "approximate RMS dB \u2014 not LUFS"
+  },
+  "n": 256
+}
