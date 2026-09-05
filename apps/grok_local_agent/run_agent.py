@@ -6,22 +6,36 @@ import uvicorn
 from .config import AGENT_HOST, AGENT_PORT
 
 
-def load_token():
+def load_user_env(*names: str) -> None:
     key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment")
-    for name in ("WARLOCK_GROK_AGENT_TOKEN", "WARLOCK_AGENT_TOKEN"):
+    for name in names:
         try:
-            token, _ = winreg.QueryValueEx(key, name)
+            value, _ = winreg.QueryValueEx(key, name)
         except FileNotFoundError:
             continue
-        if token:
-            os.environ[name] = token
-            if name == "WARLOCK_GROK_AGENT_TOKEN":
-                break
-            if not os.getenv("WARLOCK_GROK_AGENT_TOKEN"):
-                os.environ["WARLOCK_GROK_AGENT_TOKEN"] = token
+        if value:
+            os.environ[name] = str(value)
+
+
+def load_token():
+    load_user_env(
+        "WARLOCK_GROK_AGENT_TOKEN",
+        "WARLOCK_AGENT_TOKEN",
+        "XAI_API_KEY",
+        "GROK_API_KEY",
+    )
+    if os.getenv("XAI_API_KEY") and not os.getenv("GROK_API_KEY"):
+        os.environ["GROK_API_KEY"] = os.environ["XAI_API_KEY"]
+    if os.getenv("GROK_API_KEY") and not os.getenv("XAI_API_KEY"):
+        os.environ["XAI_API_KEY"] = os.environ["GROK_API_KEY"]
 
     if not os.getenv("WARLOCK_GROK_AGENT_TOKEN") and not os.getenv("WARLOCK_AGENT_TOKEN"):
         raise RuntimeError("No agent token is configured")
+
+    if os.getenv("XAI_API_KEY"):
+        print("XAI_API_KEY: present")
+    else:
+        print("XAI_API_KEY: missing")
 
 
 if __name__ == "__main__":
