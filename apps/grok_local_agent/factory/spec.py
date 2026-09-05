@@ -15,6 +15,7 @@ class Parameter:
     unit: str = ""
     curve: str = "linear"
     smoothing: bool = True
+    smoothing_ms: float = 10.0
     automatable: bool = True
     version_introduced: str = "0.1.0"
 
@@ -35,11 +36,15 @@ class PluginSpec:
     uri: str
     brand: str = "WARLOCK"
     vendor: str = "WARLOCK Plugins"
+    plugin_id: str = "com.warlock.factorytest"
+    schema_version: int = 1
+    description: str = ""
     plugin_type: str = "utility"
     category: str = "Utility"
     version: str = "0.1.0"
     framework: str = "DPF"
     formats: list[str] = field(default_factory=lambda: ["VST3"])
+    sample_rates: list[int] = field(default_factory=lambda: [44100, 48000, 96000])
     oversampling: int = 1
     oversampling_profile: str = "ECO"
     latency_policy: str = "report-actual"
@@ -57,6 +62,8 @@ class PluginSpec:
 
     def manifest(self) -> dict:
         return {
+            "plugin_id": self.plugin_id,
+            "schema_version": self.schema_version,
             "name": self.plugin,
             "vendor": self.vendor,
             "framework": self.framework,
@@ -71,17 +78,8 @@ class PluginSpec:
         }
 
     def validate(self) -> dict:
-        errors = []
-        ids = [p.id for p in self.parameters]
-        if len(ids) != len(set(ids)):
-            errors.append("duplicate parameter id")
-        if not self.plugin.strip():
-            errors.append("empty name")
-        if self.framework != "DPF" and self.template != "legacy":
-            errors.append("new factory plugins must default DPF")
-        if "VST3" not in self.formats:
-            errors.append("first production target is VST3")
-        return {"ok": not errors, "errors": errors}
+        from .spec_validator import validate as _v
+        return _v(self)
 
 
 def probe_spec() -> PluginSpec:
