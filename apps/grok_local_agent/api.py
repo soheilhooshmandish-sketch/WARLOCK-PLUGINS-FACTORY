@@ -107,6 +107,11 @@ def ui():
     return FileResponse(page)
 
 
+@app.get("/voice")
+def voice():
+    return FileResponse(Path(STATIC_DIR) / "voice.html")
+
+
 @app.get("/health")
 def health():
     return health_payload()
