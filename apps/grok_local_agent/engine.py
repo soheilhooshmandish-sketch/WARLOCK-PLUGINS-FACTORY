@@ -17,6 +17,7 @@ from .selector import run_selector
 from .selfmap import api_routes
 from .sources import list_sources
 from .windows import route as windows_route
+from .operator import route as operator_route
 
 
 def _has(key: str, *words: str) -> bool:
@@ -77,6 +78,12 @@ def plan(text: str) -> list[tuple[str, callable]]:
         "نوتیف", "باز کن", "calc", "explorer", "tasklist",
     ):
         add("windows", lambda: windows_route(text))
+    if _has(
+        key,
+        "operator", "اپراتور", "vision", "desktop", "دسکتاپ", "مجوز",
+        "permission", "workflow", "ماوس", "کیبورد", "mouse", "keyboard",
+    ):
+        add("operator", lambda: operator_route(text))
     brain_keys = (
         "interrupt", "checkpointer", "reducer", "add_messages", "selector",
         "candidate", "hitl", "crewai", "langgraph", "autogen", "oversight",

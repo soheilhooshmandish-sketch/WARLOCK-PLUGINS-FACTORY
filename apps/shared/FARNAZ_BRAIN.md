@@ -51,3 +51,19 @@ Delay `75ms + MORPH*280ms`. Reverb wet `SPACE^1.4 * 0.34`. MORPH tints shaper **
 ## Lab UI
 
 Menus top, tools left, program page left-wide, canvas center, inspect + Farnaz right. SOUND: RECORD/DEMO/MORPH primary. Chat: SEND is the only loud action. Farnaz icon bottom-left.
+
+
+## Desktop Operator
+
+Farnaz on Windows (127.0.0.1:8766) can become a desktop operator. Default is DENY.
+
+Capabilities (grant with confirm=true, 1-120 minutes):
+
+- see — screenshot of this machine, saved locally
+- apps — visible window titles
+- click — mouse click at x,y
+- type — short safe text, no secrets
+- launch — notepad / calc / explorer / paint
+- workflow — up to 8 steps of the above
+
+Never controls apps/local_agent. Never binds 0.0.0.0. Screenshot does not leave the PC.

@@ -274,3 +274,6 @@ def grok_chat_route(
     except Exception as exc:
         print(f"CHAT ERROR 500: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=500, detail="Grok request failed")
+
+from .operator_routes import mount as mount_operator
+mount_operator(app, require_token)
