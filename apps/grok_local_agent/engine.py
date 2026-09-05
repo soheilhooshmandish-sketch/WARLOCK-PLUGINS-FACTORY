@@ -64,14 +64,15 @@ def plan(text: str) -> list[tuple[str, callable]]:
     brain_keys = (
         "interrupt", "checkpointer", "reducer", "add_messages", "selector",
         "candidate", "hitl", "crewai", "langgraph", "autogen", "oversight",
-        "pele", "xai", "grok-4", "توضیح", "explain", "چیست", "یعنی", "how does",
-        "what is", "versioning", "messagesstate",
+        "pele", "xai", "grok-4", "mcp", "tool", "function", "fastapi", "uvicorn",
+        "توضیح", "explain", "چیست", "یعنی", "how does", "what is", "versioning",
+        "messagesstate", "command", "resume",
     )
     if _has(key, *brain_keys):
         add("brain", lambda: brain_answer(text))
     if _has(key, "منبع", "منابع", "source", "sources", "citation", "docs"):
         topic = None
-        for t in ("autogen", "crewai", "langgraph", "xai", "oversight"):
+        for t in ("autogen", "crewai", "langgraph", "xai", "oversight", "mcp", "tools", "fastapi"):
             if t in key:
                 topic = t
                 break
